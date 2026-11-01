@@ -132,11 +132,6 @@
       const fat = smooth(span(p, 0.52, 0.84));
       nav.classList.toggle('on-dark', fat > 0.7);
       ctx.clearRect(0, 0, w, h);
-      if (fat >= 1) {
-        ctx.fillStyle = '#111111';
-        ctx.fillRect(0, 0, w, h);
-        return;
-      }
       const band = lerp(g.band, h * 1.08, wide);
       const gap = band / COUNT;
       const x0 = lerp(g.cx, -w * 0.06, u);
@@ -145,7 +140,7 @@
       const limit = Math.max(1, Math.floor(STEPS * s.load));
       ctx.lineJoin = 'round';
       ctx.lineCap = 'round';
-      strands.forEach((st, i) => {
+      const trace = (st) => {
         ctx.beginPath();
         let px = 0;
         let py = 0;
@@ -157,16 +152,29 @@
           py = scratch[1];
         }
         ctx.lineTo(px, py);
-        const chosen = i === CHOSEN;
-        ctx.lineWidth = lerp(chosen ? 2.2 : 1, gap + 1.5, fat);
-        const blue = chosen ? 1 - fat : 0;
-        ctx.strokeStyle = blue > 0
-          ? `rgb(${Math.round(lerp(17, 0, blue))},${Math.round(lerp(17, 108, blue))},${Math.round(lerp(17, 255, blue))})`
-          : `rgba(17,17,17,${lerp(0.68, 1, fat)})`;
-        ctx.stroke();
-      });
-      // A signal keeps running down the one blue line.
-      if (s.load >= 1 && fat < 0.2 && !calm()) {
+      };
+      if (fat >= 1) {
+        ctx.fillStyle = '#111111';
+        ctx.fillRect(0, 0, w, h);
+      } else {
+        // The lines leave the knot black and arrive blue, the same turn the logo makes from E to Y.
+        const wash = ctx.createLinearGradient(g.cx + g.R * 0.4, 0, w * 0.86, 0);
+        wash.addColorStop(0, `rgba(17,17,17,${lerp(0.56, 1, fat)})`);
+        wash.addColorStop(1, `rgba(${Math.round(lerp(0, 17, fat))},${Math.round(lerp(108, 17, fat))},${Math.round(lerp(255, 17, fat))},${lerp(0.92, 1, fat)})`);
+        ctx.strokeStyle = wash;
+        ctx.lineWidth = lerp(1, gap + 1.5, fat);
+        strands.forEach((st, i) => {
+          if (i === CHOSEN) return;
+          trace(st);
+          ctx.stroke();
+        });
+      }
+      // One thread stays blue from the knot to the next chapter, with a signal running along it.
+      trace(strands[CHOSEN]);
+      ctx.strokeStyle = '#006cff';
+      ctx.lineWidth = 2.25;
+      ctx.stroke();
+      if (s.load >= 1 && !calm()) {
         const travel = 0.42 + ((now * 0.00011) % 1) * 0.58;
         point(strands[CHOSEN], travel, u, band, x0, x1, tau, scratch);
         ctx.fillStyle = '#006cff';
@@ -458,9 +466,8 @@
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
       ctx.lineWidth = narrow ? 1.1 : 1.35;
-      [[0.32, 2], [0.62, 0.15], [1, -2]].forEach(([alpha, far], band, all) => {
-        const near = band ? all[band - 1][1] : 3;
-        ctx.strokeStyle = `rgba(255,255,255,${alpha})`;
+      [['rgba(58,132,255,0.72)', 0.42, 3], ['rgba(176,208,255,0.86)', -0.12, 0.42], ['#ffffff', -3, -0.12]].forEach(([colour, far, near]) => {
+        ctx.strokeStyle = colour;
         ctx.beginPath();
         for (let i = 0; i < N - 1; i++) {
           if (tone[i]) continue;
@@ -1383,257 +1390,559 @@
     addEventListener('scroll', () => { if (still) wake(); }, { passive: true });
   };
 
-  /* The live rule: drag the line, and the sentence, the code and the count all follow. */
-  const live = () => {
-    const root = document.querySelector('.live');
-    const box = root.querySelector('.bars');
-    const canvas = box.querySelector('canvas');
-    const line = box.querySelector('.bars__line');
-    const handle = box.querySelector('.bars__handle');
+  /* Record: the list behaves like Nungil, the company's gaze-controlled browser. What you look at gets an
+     outline; keep looking and it presses. A pressed item fills the dot display and the panel beside the list. */
+  const record = () => {
+    const root = document.querySelector('.record');
+    const wrap = root.querySelector('.rec__wrap');
+    const rows = [...root.querySelectorAll('.rec')];
+    const ring = root.querySelector('.rec__ring');
+    const fill = ring.firstElementChild;
+    const mark = root.querySelector('.rec__mark');
+    const canvas = root.querySelector('.rec__dots');
+    const say = root.querySelector('.rec__say');
+    const sayTitle = say.querySelector('.rec__say-title');
+    const [sayWho, sayDate] = say.querySelectorAll('.rec__say-meta span');
+    const sayDesc = say.querySelector('.rec__say-desc');
     const segment = root.querySelector('.segment');
-    const values = [...root.querySelectorAll('[data-value]')];
-    const result = root.querySelector('[data-result]');
-    const countEl = root.querySelector('[data-count]');
-    const code = root.querySelector('[data-code]');
-    box.hidden = false;
-    segment.hidden = false;
-
-    const MIN = 1.2, MAX = 3.6, TOP = 4, N = 96;
-    const make = (seed, level, wobble, spikes) => {
-      const random = seeded(seed);
-      const out = Array.from({ length: N }, (_, i) => {
-        const slow = Math.sin(i * 0.17 + seed) * 0.18 + Math.sin(i * 0.05 + seed * 2) * 0.14;
-        return clamp(level + slow + (random() - 0.5) * wobble, 0.3, 2.3);
-      });
-      spikes.forEach(([i, v]) => { out[i] = v; });
-      return out;
-    };
-    const sets = {
-      trade: {
-        data: make(11, 1.05, 0.9, [[7, 2.7], [19, 1.9], [23, 3.3], [38, 2.2], [41, 2.6], [58, 3.7], [60, 2.5], [73, 2.1], [79, 2.9], [90, 3.1], [93, 1.8]]),
-        sentence: (v) => `하루 변동폭이 평소의 ${v}배를 넘는 날에만 매매를 검토합니다.`,
-        code: (v) => `if today_range > ${v} * usual_range:\n    review_trade()`,
-      },
-      ops: {
-        data: make(29, 0.95, 0.7, [[12, 2.3], [13, 2.9], [14, 3.4], [15, 2.6], [47, 2.1], [48, 3.0], [49, 2.5], [70, 2.8], [71, 3.6], [72, 3.2], [73, 2.4]]),
-        sentence: (v) => `처리 대기 시간이 평소의 ${v}배를 넘으면 담당자를 호출합니다.`,
-        code: (v) => `if wait_time > ${v} * usual_wait:\n    call_owner()`,
-      },
-    };
-
+    const wideQuery = matchMedia('(min-width: 1024px) and (hover: hover) and (pointer: fine)');
     const still = calm();
-    let set = 'trade';
-    let value = 2.4;
-    let shown = null;
+    const DWELL = 700;
+    const AUTO_STEP = 3000;
+    const IDLE = 1800;
+    const OMEGA = (2 * Math.PI) / 0.32;
+    const FAMILY = '"Pretendard Variable", Pretendard, sans-serif';
+    segment.hidden = false;
+    root.querySelector('.record__hint').hidden = false;
+
+    /* The dot display: each dot's size is how much of a shape covers it, drawn small so edges stay soft. */
+    const off = document.createElement('canvas');
+    const octx = off.getContext('2d', { willReadFrequently: true });
     let view = null;
-    let frame = 0;
-    let grown = still;
-    let growth = still ? 1 : 0;
-    const bars = sets[set].data.map((v) => ({ now: v, speed: 0, heat: v > value ? 1 : 0 }));
+    let cols = 0;
+    let lines = 0;
+    let pitch = 8;
+    let x0 = 0;
+    let y0 = 0;
+    let cur = new Float32Array(0);
+    let goal = new Float32Array(0);
+    let wait = new Float32Array(0);
+    let sinceChange = 9;
+    let dirty = true;
 
-    const yOf = (v) => {
-      const h = view ? view.h : box.clientHeight;
-      return h - (v / TOP) * h;
+    const takeGoal = () => {
+      const d = octx.getImageData(0, 0, cols, lines).data;
+      for (let i = 0; i < goal.length; i++) goal[i] = Math.pow(d[i * 4 + 3] / 255, 0.8);
     };
-    const valueOf = (y) => {
-      const h = view ? view.h : box.clientHeight;
-      return ((h - y) / h) * TOP;
+    const word = (text) => {
+      octx.clearRect(0, 0, cols, lines);
+      octx.fillStyle = '#ffffff';
+      octx.textBaseline = 'alphabetic';
+      octx.textAlign = 'left';
+      octx.font = `700 100px ${FAMILY}`;
+      const m = octx.measureText(text);
+      const w = m.actualBoundingBoxLeft + m.actualBoundingBoxRight;
+      const h = m.actualBoundingBoxAscent + m.actualBoundingBoxDescent;
+      const k = Math.min((cols * 0.88) / w, (lines * 0.68) / h);
+      octx.font = `700 ${100 * k}px ${FAMILY}`;
+      octx.fillText(text, (cols - w * k) / 2 + m.actualBoundingBoxLeft * k, (lines - h * k) / 2 + m.actualBoundingBoxAscent * k);
+      takeGoal();
     };
-    const rounded = (v) => (Math.round(clamp(v, MIN, MAX) * 10) / 10).toFixed(1);
+    const box = (x, y, w, h, r) => {
+      octx.beginPath();
+      if (octx.roundRect) octx.roundRect(x, y, w, h, r); else octx.rect(x, y, w, h);
+      octx.fill();
+    };
+    const shapes = {
+      // The iris looks where the pointer is.
+      eye(gx = 0, gy = 0) {
+        const c = octx;
+        c.clearRect(0, 0, cols, lines);
+        const cx = cols / 2;
+        const cy = lines / 2;
+        const W = Math.min(cols * 0.84, lines * 1.85);
+        const H = W * 0.62;
+        const lid = () => {
+          c.beginPath();
+          c.moveTo(cx - W / 2, cy);
+          c.quadraticCurveTo(cx, cy - H, cx + W / 2, cy);
+          c.quadraticCurveTo(cx, cy + H, cx - W / 2, cy);
+          c.closePath();
+        };
+        const ix = cx + gx * W * 0.2;
+        const iy = cy + gy * H * 0.2;
+        const r = H * 0.4;
+        c.save();
+        lid();
+        c.clip();
+        c.fillStyle = '#ffffff';
+        c.beginPath();
+        c.arc(ix, iy, r, 0, TAU);
+        c.fill();
+        c.globalCompositeOperation = 'destination-out';
+        c.beginPath();
+        c.arc(ix, iy, r * 0.42, 0, TAU);
+        c.fill();
+        c.restore();
+        c.strokeStyle = '#ffffff';
+        c.lineWidth = Math.max(1.5, lines * 0.05);
+        lid();
+        c.stroke();
+        takeGoal();
+      },
+      // A dashboard's panels, in the tones its tiles would have.
+      tiles() {
+        octx.clearRect(0, 0, cols, lines);
+        const H = lines * 0.76;
+        const W = Math.min(cols * 0.8, H * 1.55);
+        const x = (cols - W) / 2;
+        const y = (lines - H) / 2;
+        const g = Math.max(1.2, lines * 0.035);
+        const r = Math.max(1, lines * 0.03);
+        const bar = H * 0.14;
+        const bodyH = H - bar - g;
+        octx.fillStyle = '#ffffff';
+        box(x, y, W, bar, r);
+        octx.fillStyle = 'rgba(255,255,255,0.5)';
+        box(x, y + bar + g, W * 0.6 - g / 2, bodyH, r);
+        octx.fillStyle = '#ffffff';
+        box(x + W * 0.6 + g / 2, y + bar + g, W * 0.4 - g / 2, bodyH / 2 - g / 2, r);
+        octx.fillStyle = 'rgba(255,255,255,0.28)';
+        box(x + W * 0.6 + g / 2, y + bar + g + bodyH / 2 + g / 2, W * 0.4 - g / 2, bodyH / 2 - g / 2, r);
+        takeGoal();
+      },
+      // True to scale: bright dots are to all the dots as 150 is to 23,000.
+      stars() {
+        goal.fill(0);
+        const random = seeded(150);
+        const count = Math.max(1, Math.round((goal.length * 150) / 23000));
+        for (let placed = 0; placed < count;) {
+          const i = Math.floor(random() * goal.length);
+          if (!goal[i]) { goal[i] = 1; placed++; }
+        }
+      },
+      lock() {
+        const c = octx;
+        c.clearRect(0, 0, cols, lines);
+        const H = lines * 0.76;
+        const bw = H * 0.86;
+        const bh = H * 0.56;
+        const cx = cols / 2;
+        const by = (lines + H) / 2 - bh;
+        const lw = H * 0.13;
+        const r = bw * 0.3;
+        c.fillStyle = '#ffffff';
+        c.strokeStyle = '#ffffff';
+        c.lineWidth = lw;
+        c.beginPath();
+        c.moveTo(cx - r, by + 1);
+        c.lineTo(cx - r, by - H * 0.44 + r + lw / 2);
+        c.arc(cx, by - H * 0.44 + r + lw / 2, r, Math.PI, 0);
+        c.lineTo(cx + r, by + 1);
+        c.stroke();
+        box(cx - bw / 2, by, bw, bh, Math.max(1, H * 0.06));
+        c.save();
+        c.globalCompositeOperation = 'destination-out';
+        c.beginPath();
+        c.arc(cx, by + bh * 0.42, H * 0.075, 0, TAU);
+        c.fill();
+        c.fillRect(cx - H * 0.03, by + bh * 0.42, H * 0.06, bh * 0.32);
+        c.restore();
+        takeGoal();
+      },
+      heart() {
+        const c = octx;
+        c.clearRect(0, 0, cols, lines);
+        const s = Math.min(cols * 0.36, lines * 0.46);
+        const cx = cols / 2;
+        const cy = lines / 2;
+        c.fillStyle = '#ffffff';
+        c.beginPath();
+        c.moveTo(cx, cy + s * 0.92);
+        c.bezierCurveTo(cx - s * 1.5, cy - s * 0.05, cx - s * 0.78, cy - s * 1.02, cx, cy - s * 0.32);
+        c.bezierCurveTo(cx + s * 0.78, cy - s * 1.02, cx + s * 1.5, cy - s * 0.05, cx, cy + s * 0.92);
+        c.fill();
+        takeGoal();
+      },
+    };
 
-    const sayRule = () => {
-      const v = rounded(value);
-      const key = `${set}:${v}`;
-      if (key === shown) return;
-      shown = key;
-      values.forEach((el) => { el.textContent = v; });
-      result.textContent = sets[set].sentence(v);
-      code.textContent = sets[set].code(v);
-      const hits = sets[set].data.filter((d) => d > +v).length;
-      countEl.textContent = `예시 96일 가운데 ${hits}일`;
-      handle.setAttribute('aria-valuenow', v);
-      handle.setAttribute('aria-valuetext', `평소의 ${v}배`);
-    };
-
-    const placeLine = () => {
-      const y = yOf(value);
-      line.style.transform = `translate3d(0, ${y}px, 0)`;
-      handle.style.transform = `translate3d(0, ${y}px, 0)`;
-    };
-
-    const paint = () => {
-      if (!view) return;
+    const paintDots = () => {
       const { ctx, w, h } = view;
       ctx.clearRect(0, 0, w, h);
-      const gap = w < 640 ? 1 : 2.5;
-      const width = (w - gap * (N - 1)) / N;
-      bars.forEach((bar, i) => {
-        const delay = i / N;
-        const grow = still ? 1 : smooth(span(growth, delay * 0.55, delay * 0.55 + 0.45));
-        const height = (bar.now / TOP) * h * grow;
-        const r = Math.round(lerp(29, 0, bar.heat));
-        const g = Math.round(lerp(29, 108, bar.heat));
-        const b = Math.round(lerp(29, 255, bar.heat));
-        ctx.fillStyle = `rgb(${r},${g},${b})`;
-        ctx.fillRect(i * (width + gap), h - height, width, height);
+      const small = pitch * 0.11;
+      const large = pitch * 0.46;
+      const levels = Array.from({ length: 6 }, () => new Path2D());
+      for (let i = 0; i < cur.length; i++) {
+        const v = cur[i];
+        const px = x0 + (i % cols) * pitch;
+        const py = y0 + Math.floor(i / cols) * pitch;
+        const r = small + (large - small) * v;
+        const path = levels[Math.round(v * 5)];
+        path.moveTo(px + r, py);
+        path.arc(px, py, r, 0, TAU);
+      }
+      levels.forEach((path, n) => {
+        ctx.fillStyle = `rgba(255,255,255,${0.26 + (0.74 * n) / 5})`;
+        ctx.fill(path);
       });
     };
-
-    const OMEGA = (2 * Math.PI) / 0.42;
-    const step = (dt) => {
-      let busy = false;
-      const data = sets[set].data;
-      bars.forEach((bar, i) => {
-        const target = data[i];
-        bar.speed += (OMEGA * OMEGA * (target - bar.now) - 2 * OMEGA * bar.speed) * dt;
-        bar.now += bar.speed * dt;
-        if (Math.abs(target - bar.now) + Math.abs(bar.speed) > 0.002) busy = true; else { bar.now = target; bar.speed = 0; }
-        const heat = target > value ? 1 : 0;
-        bar.heat += (heat - bar.heat) * Math.min(1, dt * 18);
-        if (Math.abs(heat - bar.heat) > 0.01) busy = true; else bar.heat = heat;
-      });
-      if (growth < 1) {
-        growth = Math.min(1, growth + dt / 1.1);
-        busy = true;
+    const stepDots = (dt) => {
+      sinceChange += dt;
+      const k = still ? 1 : 1 - Math.exp(-dt * 13);
+      for (let i = 0; i < cur.length; i++) {
+        if (!still && sinceChange < wait[i]) { dirty = true; continue; }
+        const d = goal[i] - cur[i];
+        if (d === 0) continue;
+        cur[i] = Math.abs(d) > 0.004 ? cur[i] + d * k : goal[i];
+        dirty = true;
       }
-      return busy;
+      if (dirty) paintDots();
+      dirty = false;
     };
 
-    // The spring carries the release velocity and always starts from where the line is now.
-    let spring = null;
-    let last = 0;
-    const tick = (now) => {
-      const dt = clamp((now - last) / 1000, 1 / 240, 0.05);
-      last = now;
-      let busy = step(dt);
-      if (spring) {
-        const omega = (2 * Math.PI) / 0.38;
-        spring.v += (omega * omega * (spring.to - spring.y) - 2 * omega * spring.v) * dt;
-        spring.y += spring.v * dt;
-        value = valueOf(spring.y);
-        if (Math.abs(spring.to - spring.y) + Math.abs(spring.v) < 0.3) {
-          value = valueOf(spring.to);
-          spring = null;
-        } else busy = true;
-        placeLine();
-        sayRule();
-      }
-      paint();
-      frame = busy ? requestAnimationFrame(tick) : 0;
-    };
-    const wake = () => {
-      if (!frame) {
-        last = performance.now();
-        frame = requestAnimationFrame(tick);
-      }
-    };
+    /* Rows */
+    let chosen = rows[0];
+    let gaze = rows[0];
+    let dwell = null;
+    let autoLeft = still ? 0 : rows.length;
+    let wide = wideQuery.matches;
+    let visible = false;
+    let near = false;
+    let lastMove = -1e9;
+    let pointer = null;
+    let moveX = -1;
+    let moveY = -1;
+    const look = { x: 0, y: 0 };
 
-    const settleAt = (to, v = 0) => {
-      const snapped = +rounded(to);
-      if (still) {
-        value = snapped;
-        placeLine();
-        sayRule();
-        bars.forEach((bar, i) => { bar.now = sets[set].data[i]; bar.speed = 0; bar.heat = bar.now > value ? 1 : 0; });
-        paint();
-        return;
-      }
-      spring = { y: yOf(value), v, to: yOf(snapped) };
-      wake();
+    const showScene = (row) => {
+      const shape = row.dataset.shape;
+      if (shape) shapes[shape](); else word(row.dataset.led);
+      sinceChange = 0;
+      dirty = true;
     };
-
-    const rubber = (over, size) => (over * size * 0.55) / (size + 0.55 * Math.abs(over));
-    const bounded = (y) => {
-      const low = yOf(MAX);
-      const high = yOf(MIN);
-      const size = view ? view.h : 300;
-      if (y < low) return low + rubber(y - low, size);
-      if (y > high) return high + rubber(y - high, size);
-      return y;
-    };
-
-    let held = null;
-    const move = (e) => {
-      if (!held || e.pointerId !== held.id) return;
-      const y = bounded(e.clientY - held.top - held.grab);
-      held.trail.push({ y, t: e.timeStamp });
-      if (held.trail.length > 5) held.trail.shift();
-      value = valueOf(y);
-      placeLine();
-      sayRule();
-      wake();
-    };
-    const start = (e) => {
-      if (e.button) return;
-      if (e.currentTarget === box && e.pointerType !== 'mouse' && !e.target.closest('.bars__handle')) return;
-      e.preventDefault();
-      spring = null;
-      const rect = box.getBoundingClientRect();
-      const onLine = e.target.closest('.bars__handle') || Math.abs(e.clientY - rect.top - yOf(value)) < 24;
-      const grab = onLine ? e.clientY - rect.top - yOf(value) : 0;
-      held = { id: e.pointerId, top: rect.top, grab, trail: [] };
-      box.setPointerCapture(e.pointerId);
-      box.classList.add('is-held');
-      move(e);
-    };
-    const end = (e) => {
-      if (!held || e.pointerId !== held.id) return;
-      // Only the last moments count: a hand that paused before letting go has no velocity left.
-      const trail = held.trail.filter((pt) => e.timeStamp - pt.t < 100);
-      const a = trail[0];
-      const b = trail[trail.length - 1];
-      const velocity = trail.length > 1 && b.t > a.t ? ((b.y - a.y) / (b.t - a.t)) * 1000 : 0;
-      held = null;
-      box.classList.remove('is-held');
-      const projected = yOf(value) + (velocity / 1000) * (0.992 / (1 - 0.992));
-      settleAt(clamp(valueOf(projected), MIN, MAX), velocity);
-    };
-    box.addEventListener('pointerdown', start);
-    box.addEventListener('pointermove', move);
-    box.addEventListener('pointerup', end);
-    box.addEventListener('pointercancel', end);
-
-    handle.addEventListener('keydown', (e) => {
-      const steps = { ArrowUp: 0.1, ArrowRight: 0.1, ArrowDown: -0.1, ArrowLeft: -0.1, PageUp: 0.5, PageDown: -0.5 };
-      let to = null;
-      // Key repeat outruns the spring, so steps add to where the line is heading, not where it is.
-      if (e.key in steps) to = (spring ? valueOf(spring.to) : value) + steps[e.key];
-      if (e.key === 'Home') to = MIN;
-      if (e.key === 'End') to = MAX;
-      if (to === null) return;
-      e.preventDefault();
-      settleAt(clamp(to, MIN, MAX));
-    });
-
-    segmented(segment, (button) => {
-      set = button.dataset.set;
-      sayRule();
-      if (still) settleAt(value); else wake();
-    });
-
-    const resize = () => {
+    const sizeDots = () => {
       view = fit(canvas);
-      placeLine();
-      paint();
+      pitch = view.w < 640 ? 6 : 8;
+      cols = Math.max(8, Math.floor(view.w / pitch));
+      lines = Math.max(6, Math.floor(view.h / pitch));
+      x0 = (view.w - (cols - 1) * pitch) / 2;
+      y0 = (view.h - (lines - 1) * pitch) / 2;
+      off.width = cols;
+      off.height = lines;
+      const n = cols * lines;
+      cur = new Float32Array(n);
+      goal = new Float32Array(n);
+      wait = new Float32Array(n);
+      const random = seeded(41);
+      for (let i = 0; i < n; i++) wait[i] = ((i % cols) / cols) * 0.26 + random() * 0.06;
+      showScene(chosen);
     };
-    new ResizeObserver(resize).observe(box);
-    resize();
-    sayRule();
+    const tell = () => {
+      sayTitle.textContent = chosen.querySelector('.rec__title').textContent;
+      sayWho.textContent = chosen.querySelector('.rec__who').textContent;
+      sayDate.textContent = chosen.querySelector('.rec__date').textContent;
+      sayDesc.innerHTML = chosen.querySelector('.rec__desc').innerHTML;
+      if (!still && say.animate) {
+        say.animate([{ opacity: 0, transform: 'translateY(10px)' }, { opacity: 1, transform: 'none' }], { duration: 380, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' });
+      }
+    };
+    const choose = (row, byUser) => {
+      if (row === chosen) return;
+      chosen.classList.remove('is-on');
+      chosen = row;
+      chosen.classList.add('is-on');
+      rows.forEach((r) => {
+        if (wide) r.querySelector('.rec__row').setAttribute('aria-pressed', String(r === chosen));
+      });
+      say.setAttribute('aria-live', byUser ? 'polite' : 'off');
+      tell();
+      showScene(chosen);
+    };
+    const shown = () => rows.filter((r) => !r.classList.contains('is-out'));
+    const setMode = () => {
+      wide = wideQuery.matches;
+      rows.forEach((r) => {
+        const head = r.querySelector('.rec__row');
+        if (wide) {
+          head.setAttribute('role', 'button');
+          head.tabIndex = 0;
+          head.setAttribute('aria-pressed', String(r === chosen));
+        } else {
+          head.removeAttribute('role');
+          head.removeAttribute('tabindex');
+          head.removeAttribute('aria-pressed');
+        }
+      });
+      dwell = null;
+      gaze = chosen;
+      ringSpring.fresh = true;
+      markSpring.fresh = true;
+    };
 
-    // First sight: the bars rise and the line settles, which also shows that it moves.
-    if (!still && 'IntersectionObserver' in window) {
-      value = 3.3;
-      placeLine();
-      const seen = new IntersectionObserver((entries) => {
-        if (!entries.some((e) => e.isIntersecting) || grown) return;
-        grown = true;
-        seen.disconnect();
-        settleAt(2.4);
-      }, { threshold: 0.35 });
-      seen.observe(box);
-    } else {
-      growth = 1;
-      settleAt(2.4);
+    /* The outline and the pressed mark move on critically damped springs, always from where they are now. */
+    const makeSpring = () => ({ y: 0, h: 0, vy: 0, vh: 0, fresh: true, py: -1, ph: -1 });
+    const ringSpring = makeSpring();
+    const markSpring = makeSpring();
+    const follow = (el, s, row, dt) => {
+      const y = row.offsetTop;
+      const h = row.offsetHeight;
+      if (s.fresh || still || !dt) {
+        s.y = y;
+        s.h = h;
+        s.vy = 0;
+        s.vh = 0;
+        s.fresh = false;
+      } else {
+        s.vy += (OMEGA * OMEGA * (y - s.y) - 2 * OMEGA * s.vy) * dt;
+        s.y += s.vy * dt;
+        s.vh += (OMEGA * OMEGA * (h - s.h) - 2 * OMEGA * s.vh) * dt;
+        s.h += s.vh * dt;
+      }
+      if (Math.abs(s.y - s.py) > 0.05 || Math.abs(s.h - s.ph) > 0.05) {
+        el.style.transform = `translate3d(0, ${s.y.toFixed(2)}px, 0)`;
+        el.style.height = `${s.h.toFixed(2)}px`;
+        s.py = s.y;
+        s.ph = s.h;
+      }
+    };
+
+    let last = 0;
+    let frame = 0;
+    const tick = (now) => {
+      const dt = last ? clamp((now - last) / 1000, 0, 1 / 30) : 0;
+      last = now;
+      if (wide && !still) {
+        const idle = now - lastMove > IDLE;
+        const busy = wrap.matches(':hover') || root.contains(document.activeElement);
+        // Until someone takes over, the outline walks the list once and shows what it does.
+        if (autoLeft > 0 && near && idle && !busy && !dwell) {
+          const list = shown();
+          gaze = list[(list.indexOf(gaze) + 1) % list.length];
+          dwell = { row: gaze, start: now, length: AUTO_STEP, byUser: false };
+          autoLeft -= 1;
+        }
+        if (dwell && !dwell.byUser && !idle) {
+          dwell = null;
+          gaze = chosen;
+        }
+      }
+      let progress = 0;
+      if (dwell) {
+        progress = clamp((now - dwell.start) / dwell.length, 0, 1);
+        if (progress >= 1) {
+          const { row, byUser } = dwell;
+          dwell = null;
+          progress = 0;
+          if (byUser) autoLeft = 0;
+          choose(row, byUser);
+        }
+      }
+      if (!wide) {
+        // No pointer to read, so the row at the middle of the screen is the one being looked at.
+        const line = innerHeight * 0.6;
+        const row = shown().find((r) => {
+          const b = r.getBoundingClientRect();
+          return b.top <= line && b.bottom >= line;
+        });
+        if (row && row !== gaze) {
+          gaze = row;
+          choose(row, false);
+        }
+      }
+      follow(ring, ringSpring, gaze, dt);
+      if (wide) follow(mark, markSpring, chosen, dt);
+      fill.style.transform = `scaleX(${progress.toFixed(3)})`;
+
+      if (chosen.dataset.shape === 'eye' && !still && sinceChange > 0.5) {
+        let aimX = Math.sin(now * 0.0011) * 0.7;
+        let aimY = Math.sin(now * 0.0017) * 0.35;
+        if (pointer && now - lastMove < 3000) {
+          const b = canvas.getBoundingClientRect();
+          aimX = clamp((pointer.x - (b.left + b.width / 2)) / (b.width / 2), -1, 1);
+          aimY = clamp((pointer.y - (b.top + b.height / 2)) / (b.height / 2), -1, 1);
+        }
+        const k = 1 - Math.exp(-dt * 7);
+        const nx = look.x + (aimX - look.x) * k;
+        const ny = look.y + (aimY - look.y) * k;
+        if (Math.abs(nx - look.x) + Math.abs(ny - look.y) > 0.003) {
+          look.x = nx;
+          look.y = ny;
+          shapes.eye(nx, ny);
+        }
+      }
+      stepDots(dt);
+      frame = visible ? requestAnimationFrame(tick) : 0;
+      if (!frame) last = 0;
+    };
+    const wake = () => { if (!frame) frame = requestAnimationFrame(tick); };
+
+    addEventListener('pointermove', (e) => {
+      if (e.pointerType !== 'mouse') return;
+      if (e.clientX === moveX && e.clientY === moveY) return;
+      moveX = e.clientX;
+      moveY = e.clientY;
+      pointer = { x: e.clientX, y: e.clientY };
+      lastMove = performance.now();
+    }, { passive: true });
+    wrap.addEventListener('pointermove', (e) => {
+      if (!wide || e.pointerType !== 'mouse') return;
+      const row = e.target.closest('.rec');
+      if (!row || row === gaze) return;
+      gaze = row;
+      dwell = row === chosen ? null : { row, start: performance.now(), length: DWELL, byUser: true };
+    });
+    wrap.addEventListener('pointerleave', () => {
+      if (!wide) return;
+      dwell = null;
+      gaze = chosen;
+    });
+    wrap.addEventListener('click', (e) => {
+      if (!wide) return;
+      const row = e.target.closest('.rec');
+      if (!row) return;
+      gaze = row;
+      dwell = null;
+      autoLeft = 0;
+      choose(row, true);
+    });
+    wrap.addEventListener('focusin', (e) => {
+      if (!wide) return;
+      const row = e.target.closest('.rec');
+      if (!row) return;
+      gaze = row;
+      dwell = null;
+      autoLeft = 0;
+      choose(row, true);
+    });
+    wrap.addEventListener('keydown', (e) => {
+      if (!wide) return;
+      const row = e.target.closest('.rec');
+      if (!row) return;
+      const list = shown();
+      const at = list.indexOf(row);
+      let to = null;
+      if (e.key === 'ArrowDown') to = list[Math.min(at + 1, list.length - 1)];
+      if (e.key === 'ArrowUp') to = list[Math.max(at - 1, 0)];
+      if (e.key === 'Enter' || e.key === ' ') to = row;
+      if (!to) return;
+      e.preventDefault();
+      to.querySelector('.rec__row').focus();
+    });
+    segmented(segment, (button) => {
+      const kind = button.dataset.kind;
+      rows.forEach((r) => {
+        const on = kind === 'all' || r.dataset.kind === kind;
+        r.classList.toggle('is-out', !on);
+        r.inert = !on;
+      });
+      autoLeft = 0;
+      dwell = null;
+      if (chosen.classList.contains('is-out')) choose(shown()[0], true);
+      gaze = chosen;
+    });
+    wideQuery.addEventListener('change', setMode);
+
+    chosen.classList.add('is-on');
+    setMode();
+    tell();
+    new ResizeObserver(() => { sizeDots(); wake(); }).observe(canvas);
+    sizeDots();
+    if (document.fonts && document.fonts.load) {
+      document.fonts.load(`700 40px ${FAMILY}`, rows.map((r) => r.dataset.led || '').join('')).then(() => { showScene(chosen); wake(); }).catch(() => {});
+    }
+    if ('IntersectionObserver' in window) {
+      new IntersectionObserver((entries) => {
+        entries.forEach((e) => {
+          visible = e.isIntersecting;
+          near = e.intersectionRatio >= 0.3;
+        });
+        if (visible) wake();
+      }, { threshold: [0, 0.3, 0.6] }).observe(root);
+    } else { visible = true; near = true; wake(); }
+  };
+
+  /* Contact: two sets of lines come in from either side and interlock as the section arrives. */
+  const weave = () => {
+    const canvas = document.querySelector('.contact__weave');
+    const root = canvas.parentElement;
+    const still = calm();
+    const hand = { x: 0, y: 0, aimX: 0, aimY: 0, k: 0, aim: 0 };
+    let view = null;
+    let last = 0;
+
+    const paint = (t) => {
+      if (!view) return;
+      const now = t || last;
+      const dt = last ? clamp((now - last) / 1000, 0, 0.05) : 0;
+      last = now;
+      hand.x += (hand.aimX - hand.x) * Math.min(1, dt * 9);
+      hand.y += (hand.aimY - hand.y) * Math.min(1, dt * 9);
+      hand.k += (hand.aim - hand.k) * Math.min(1, dt * 5);
+      const { ctx, w, h } = view;
+      const top = root.getBoundingClientRect().top;
+      const k = still ? 1 : smooth(span((innerHeight * 0.98 - top) / (innerHeight * 0.74), 0, 1));
+      const narrow = w < 640;
+      const PAIRS = narrow ? 13 : 18;
+      const TRACKS = PAIRS * 2;
+      const gap = narrow ? 4.5 : 4.6;
+      const spread = Math.max(1, (h * 0.94) / (TRACKS * gap));
+      const cy = h / 2;
+      const tips = [lerp(w * 0.16, w * 0.68, k), lerp(w * 0.84, w * 0.32, k)];
+      const STEPS = narrow ? 50 : 80;
+      const time = now * 0.0006;
+      ctx.clearRect(0, 0, w, h);
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.lineWidth = narrow ? 1.1 : 1.25;
+      [0, 1].forEach((side) => {
+        const colour = side ? '#006cff' : '#1d1d1d';
+        const start = side ? w + 12 : -12;
+        ctx.strokeStyle = colour;
+        ctx.fillStyle = colour;
+        for (let i = 0; i < PAIRS; i++) {
+          // Left lines take the even tracks and right lines the odd ones, so they mesh without touching.
+          const track = i * 2 + side - (TRACKS - 1) / 2;
+          let x = 0;
+          let y = 0;
+          ctx.beginPath();
+          for (let j = 0; j <= STEPS; j++) {
+            x = lerp(start, tips[side], j / STEPS);
+            const fan = smooth(span(Math.abs(x - w / 2) / (w / 2), 0.16, 1));
+            y = cy + track * gap * lerp(1, spread, fan);
+            if (!still) y += Math.sin(x * 0.007 + time + i * 0.35 + side * 2) * 9 * fan;
+            if (hand.k > 0.004) {
+              const dx = x - hand.x;
+              const dy = y - hand.y;
+              const d2 = dx * dx + dy * dy;
+              if (d2 < 30000) {
+                const d = Math.sqrt(d2) + 0.001;
+                y += (dy / d) * Math.exp(-d2 / 7000) * 30 * hand.k;
+              }
+            }
+            if (j) ctx.lineTo(x, y); else ctx.moveTo(x, y);
+          }
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.arc(x, y, narrow ? 2 : 2.5, 0, TAU);
+          ctx.fill();
+        }
+      });
+    };
+
+    new ResizeObserver(() => { view = fit(canvas); paint(); }).observe(canvas);
+    view = fit(canvas);
+    paint(1);
+    whileVisible(canvas, paint);
+    if (!still) {
+      addEventListener('pointermove', (e) => {
+        if (e.pointerType !== 'mouse') return;
+        const r = canvas.getBoundingClientRect();
+        const inside = e.clientY >= r.top && e.clientY <= r.bottom;
+        if (inside && hand.aim === 0) { hand.x = e.clientX; hand.y = e.clientY - r.top; }
+        hand.aimX = e.clientX;
+        hand.aimY = e.clientY - r.top;
+        hand.aim = inside ? 1 : 0;
+      }, { passive: true });
     }
   };
 
@@ -1731,40 +2040,6 @@
       ready.then(() => heads.forEach((el) => { split(el); io.observe(el); }));
     }
 
-    // Phone digits roll up to their values once. Each digit stays real text, so the number still reads and copies;
-    // only the digits it rolls past come from CSS.
-    const rolls = [...document.querySelectorAll('[data-roll]')];
-    rolls.forEach((el) => {
-      const value = el.textContent.trim();
-      const shown = Object.assign(document.createElement('span'), { className: 'roll__digits' });
-      let i = 0;
-      for (const ch of value) {
-        if (!/\d/.test(ch)) { shown.append(ch); continue; }
-        const col = Object.assign(document.createElement('span'), { className: 'roll__col' });
-        const strip = Object.assign(document.createElement('span'), { className: 'roll__strip', textContent: ch });
-        strip.dataset.past = Array.from({ length: +ch }, (_, n) => n).join('\n');
-        strip.style.setProperty('--d', ch);
-        strip.style.setProperty('--i', i++);
-        col.append(strip);
-        shown.append(col);
-      }
-      el.classList.add('roll');
-      el.replaceChildren(shown);
-    });
-    if ('IntersectionObserver' in window && !still) {
-      const io = new IntersectionObserver((entries) => {
-        entries.forEach((e) => {
-          if (!e.isIntersecting) return;
-          io.unobserve(e.target);
-          // Digits rest at their values; they drop back to zero only for the frame the roll starts.
-          e.target.classList.add('is-armed');
-          void e.target.offsetWidth;
-          e.target.classList.remove('is-armed');
-          e.target.classList.add('is-in');
-        });
-      }, { rootMargin: '0px 0px -8% 0px' });
-      rolls.forEach((el) => io.observe(el));
-    }
   };
 
   Stage.smooth();
@@ -1772,5 +2047,6 @@
   quiet();
   lab();
   flow();
-  live();
+  record();
+  weave();
 })();
