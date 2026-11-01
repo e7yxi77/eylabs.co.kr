@@ -6,7 +6,7 @@
 <title>EY LABS 이와이렙스 | AI·소프트웨어·알고리즘 기술 개발 기업</title>
 <meta name="description" content="EY LABS(이와이렙스)는 일상과 현장의 불편을 AI, 소프트웨어, 알고리즘 기술로 해결하고 실제 서비스로 구현하는 기술 개발 기업입니다.">
 <link rel="canonical" href="https://www.eylabs.co.kr/">
-<script>document.documentElement.classList.add('js')</script>
+<script>document.documentElement.classList.add('js');if(parseFloat(getComputedStyle(document.documentElement).fontSize)>=20)document.documentElement.classList.add('big-type')</script>
 <meta property="og:site_name" content="EY LABS 이와이렙스">
 <meta property="og:title" content="EY LABS 이와이렙스 | 불편함을 발견하고, 기술로 해결합니다">
 <meta property="og:description" content="일상의 작은 불편에서 시작해, 실제로 작동하는 서비스까지. AI, 소프트웨어, 알고리즘으로 문제를 해결하는 기술 개발 기업입니다.">
@@ -22,7 +22,7 @@
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"Organization","name":"EY LABS","alternateName":"이와이렙스","url":"https://www.eylabs.co.kr/","logo":"https://www.eylabs.co.kr/assets/logo.svg","description":"EY LABS(이와이렙스)는 일상과 현장의 불편을 AI, 소프트웨어, 알고리즘 기술로 해결하고 실제 서비스로 구현하는 기술 개발 기업입니다.","telephone":"050-2682-09422","address":{"@type":"PostalAddress","streetAddress":"강남대로97길 19, 3층 3008호","addressLocality":"서초구","addressRegion":"서울특별시","addressCountry":"KR"}}</script>
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="assets/pretendard.css">
 <link rel="stylesheet" href="assets/scenes/stage.css">
 <link rel="stylesheet" href="assets/site.css">
 </head>
@@ -289,15 +289,15 @@
             <dl class="project__facts">
               <div><dt>해결하려는 문제</dt><dd>손을 쓰기 어려우면 마우스와 키보드가 필요한 웹 사용이 크게 제한됩니다. 눈길은 웹캠과 마이크만으로 웹을 쓸 수 있게 해 이 접근성 문제를 풀어갑니다.</dd></div>
               <div><dt>핵심 기능</dt><dd><ul>
-                <li>바라본 항목을 테두리로 표시하고, 계속 바라보면 선택</li>
+                <li>바라본 항목을 테두리로 표시하고, "클릭"이라고 말하거나 응시 클릭을 켜 두고 계속 바라보면 선택</li>
                 <li>고개를 까딱해 옆 항목으로 이동</li>
                 <li>말로 버튼을 누르고 페이지를 이동</li>
                 <li>말로 시킨 작업을 AI가 단계별로 수행하고, 전송·결제·삭제 전에는 먼저 확인</li>
               </ul></dd></div>
-              <div><dt>사용 기술</dt><dd>데스크톱 크롬 확장 프로그램, MediaPipe, 크롬 음성 인식, OpenAI Codex. 웹캠과 마이크만 있으면 됩니다.</dd></div>
+              <div><dt>사용 기술</dt><dd>데스크톱 크롬 확장 프로그램, MediaPipe, 크롬 음성 인식, OpenAI Codex. 웹캠과 마이크만 있으면 되고, AI 기능은 ChatGPT 로그인 후 쓸 수 있습니다.</dd></div>
               <div><dt>지원</dt><dd class="logos">
                 <span class="chip"><img class="chip__invert" src="assets/logos/openai.svg" alt="" width="24" height="24" loading="lazy" decoding="async">OpenAI</span>
-                <a class="chip" href="https://www.lud.works/me" target="_blank" rel="noopener"><img src="assets/logos/lud-dynamics.png" alt="" width="144" height="144" loading="lazy" decoding="async">(주)루드다이나믹스</a>
+                <a class="chip" href="https://lud.kr/" target="_blank" rel="noopener"><img src="assets/logos/lud-dynamics.png" alt="" width="144" height="144" loading="lazy" decoding="async">(주)루드다이나믹스</a>
                 <a class="chip" href="https://axhub.ai/" target="_blank" rel="noopener"><img src="assets/logos/jocoding-ax.svg" alt="" width="25" height="18" loading="lazy" decoding="async">(주)조코딩에이엑스파트너스</a>
               </dd></div>
             </dl>
@@ -344,7 +344,7 @@
                 <li>공지와 알림센터, 급식 메뉴</li>
               </ul></dd></div>
               <div><dt>사용 기술</dt><dd>WebUntis 연동, Gemini 기반 단어 자동 채우기. 학교 이메일로 가입해 이용합니다.</dd></div>
-              <div><dt>도입 학교</dt><dd class="logos">
+              <div><dt>이용 학교</dt><dd class="logos">
                 <span class="chip chip--light"><img src="assets/logos/dsseoul.png" alt="" width="376" height="245" loading="lazy" decoding="async">서울독일학교</span>
               </dd></div>
             </dl>
@@ -391,7 +391,7 @@
                     <div class="logos">
                       <a class="chip" href="https://geekble.com/" target="_blank" rel="noopener"><img src="assets/logos/geekble.png" alt="Geekble" width="268" height="56" loading="lazy" decoding="async"></a>
                       <a class="chip" href="https://lud.kr/" target="_blank" rel="noopener"><img src="assets/logos/lud-dynamics-word.png" alt="Lud Dynamics" width="405" height="56" loading="lazy" decoding="async"></a>
-                      <a class="chip" href="https://www.lud.works/me" target="_blank" rel="noopener"><img src="assets/logos/lud-works.png" alt="Lud Works" width="527" height="56" loading="lazy" decoding="async"></a>
+                      <a class="chip" href="https://www.lud.works/" target="_blank" rel="noopener"><img src="assets/logos/lud-works.png" alt="Lud Works" width="527" height="56" loading="lazy" decoding="async"></a>
                     </div></div>
                 </div>
               </div></div>
@@ -403,6 +403,7 @@
                   <h4 class="rec__title">BWKI</h4>
                   <p class="rec__result">독일 연방 AI 경진대회</p>
                   <div class="rec__desc"><p>독일 연방 AI 경진대회(Bundeswettbewerb Künstliche Intelligenz)에 참가해 AI 기반 서비스를 개발했습니다.</p> <a href="https://www.bw-ki.de/" target="_blank" rel="noopener">BWKI 사이트</a>
+                    <p class="rec__by">대회 추천·소속 기관</p>
                     <div class="logos"><span class="chip chip--tall"><img src="assets/logos/bwki-partners.png" alt="대회 추천 기관 Kultusministerkonferenz, 소속 Arbeitsgemeinschaft bundesweiter Jugendwettbewerbe" width="500" height="93" loading="lazy" decoding="async"></span></div></div>
                 </div>
               </div></div>

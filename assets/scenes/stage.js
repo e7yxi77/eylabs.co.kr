@@ -71,7 +71,7 @@
       const isPhone = c.conditions.phone;
       const ctx = { root, stage, phone: isPhone, q };
       const plan = isPhone ? (phone === 'rest' ? null : phone === 'same' ? { hold, build } : { hold: phone.hold ?? hold, build: phone.build ?? build }) : { hold, build };
-      if (!c.conditions.motion || !plan || !plan.build) { toRest(ctx); return () => root.classList.remove('is-rest'); }
+      if (!c.conditions.motion || !plan || !plan.build || html.classList.contains('big-type')) { toRest(ctx); return () => root.classList.remove('is-rest'); }
       root.classList.remove('is-rest');
       root.classList.add('is-live');
       root.style.setProperty('--hold', plan.hold);

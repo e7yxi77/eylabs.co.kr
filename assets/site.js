@@ -5,6 +5,10 @@
   const smooth = (t) => t * t * (3 - 2 * t);
   const calm = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
   const isPhone = () => matchMedia('(max-width: 767px)').matches;
+  const jump = (y) => {
+    if (Stage.lenis) Stage.lenis.scrollTo(y, { immediate: true, force: true });
+    else scrollTo({ top: y, behavior: 'instant' });
+  };
   const TAU = Math.PI * 2;
   const seeded = (seed) => () => {
     seed = (seed + 0x6d2b79f5) | 0;
@@ -54,7 +58,7 @@
     const title = root.querySelector('.opening__title');
     const say = root.querySelector('.opening__say');
     const nav = document.querySelector('.nav');
-    const small = isPhone();
+    let small = isPhone();
     const STEPS = small ? 280 : 400;
     const Cx = new Float32Array(STEPS + 1);
     const Cy = new Float32Array(STEPS + 1);
@@ -77,6 +81,7 @@
 
     // A trefoil in two turns with its lowest lobe opened, so both ends can run out to the edges of the page.
     const tie = (top, tall) => {
+      small = isPhone();
       const { w } = view;
       const R = Math.min(tall * 0.3, w * 0.38);
       const band = R * 0.4;
@@ -195,7 +200,7 @@
       });
       // Each stretch reaches toward a crossing it goes under, so it must be painted before the stretch on top
       // there. Walking order gives that, except that the last one reaches the first, which it must precede.
-      bridges.unshift(bridges.pop());
+      if (bridges.length) bridges.unshift(bridges.pop());
 
       // A bigger knot gets wider spacing and heavier lines, so it reads the same at every size.
       const count = clamp(Math.round(band / (small ? 4.6 : 4 + R * 0.012)), 6, 24);
@@ -393,6 +398,7 @@
         s.load = 1;
         measure();
         paint(1);
+        new ResizeObserver(() => { if (root.classList.contains('is-rest')) { measure(); paint(1); } }).observe(canvas);
       },
     });
 
@@ -473,13 +479,13 @@
       build(tl, { q }) {
         s.t = 0;
         tl.to(s, { t: 1, duration: 1, onUpdate: paint }, 0);
-        tl.to(q('.why__title'), { autoAlpha: 0, y: -28, duration: 0.02, ease: 'power1.in' }, TITLE - 0.025);
+        tl.to(q('.why__title'), { opacity: 0, y: -28, pointerEvents: 'none', duration: 0.02, ease: 'power1.in' }, TITLE - 0.025);
         rows.forEach((row, i) => {
           const start = TITLE + i * EACH;
           const parts = [row.querySelector('.why__from'), row.querySelector('.why__to')];
-          tl.fromTo(parts[0], { autoAlpha: 0, y: 32 }, { autoAlpha: 1, y: 0, duration: EACH * 0.12, ease: 'power2.out' }, start);
-          tl.fromTo(parts[1], { autoAlpha: 0, y: 32 }, { autoAlpha: 1, y: 0, duration: EACH * 0.12, ease: 'power2.out' }, start + EACH * 0.52);
-          if (i < rows.length - 1) tl.to(parts, { autoAlpha: 0, y: -28, duration: EACH * 0.08, ease: 'power1.in' }, start + EACH * 0.92);
+          tl.fromTo(parts[0], { opacity: 0, y: 32, pointerEvents: 'none' }, { opacity: 1, y: 0, pointerEvents: 'auto', duration: EACH * 0.12, ease: 'power2.out' }, start);
+          tl.fromTo(parts[1], { opacity: 0, y: 32, pointerEvents: 'none' }, { opacity: 1, y: 0, pointerEvents: 'auto', duration: EACH * 0.12, ease: 'power2.out' }, start + EACH * 0.52);
+          if (i < rows.length - 1) tl.to(parts, { opacity: 0, y: -28, pointerEvents: 'none', duration: EACH * 0.08, ease: 'power1.in' }, start + EACH * 0.92);
         });
         resize();
       },
@@ -772,8 +778,8 @@
         s.t = 0;
         tl.to(s, { t: 1, duration: 1, onUpdate: () => paint() }, 0);
         SWAPS.forEach((at2, i) => {
-          tl.to(beats[i], { autoAlpha: 0, y: -28, duration: 0.025, ease: 'power1.in' }, at2);
-          tl.fromTo(beats[i + 1], { autoAlpha: 0, y: 40 }, { autoAlpha: 1, y: 0, duration: 0.04, ease: 'power2.out' }, at2 + 0.03);
+          tl.to(beats[i], { opacity: 0, y: -28, duration: 0.025, ease: 'power1.in' }, at2);
+          tl.fromTo(beats[i + 1], { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.04, ease: 'power2.out' }, at2 + 0.03);
         });
         resize();
       },
@@ -782,8 +788,8 @@
         resize();
       },
     });
-    if (window.ScrollTrigger) ScrollTrigger.addEventListener('refresh', resize);
-    else { s.t = 1; resize(); }
+    if (Stage.live) ScrollTrigger.addEventListener('refresh', resize);
+    else { s.t = 1; resize(); new ResizeObserver(resize).observe(canvas); }
 
     if (!calm()) {
       whileVisible(root, paint);
@@ -928,13 +934,15 @@
     };
     const setStack = (ps) => { ps.forEach((v, k) => { prog[k] = v; }); drawAll(); };
 
-    if (!window.ScrollTrigger || calm()) setStack([1, 1, 1]);
+    if (!Stage.live || calm()) setStack([1, 1, 1]);
     else {
       const mm = gsap.matchMedia();
       mm.add('(min-width: 1024px)', () => {
         const strip = root.querySelector('.tool__strip');
-        // Starts part-drawn, so the strip never rises into view empty.
+        // Starts part-drawn, so the strip never rises into view empty. The empty timeline makes the trigger wait for the
+        // next tick to measure itself; measuring at once here sends the page to the top when the window crosses this width.
         ScrollTrigger.create({
+          animation: gsap.timeline(),
           trigger: strip,
           start: 'top 92%',
           end: 'top 12%',
@@ -949,10 +957,10 @@
           },
         });
       });
-      mm.add('(max-width: 1023px)', () => {
+      mm.add('(max-width: 1023.98px)', () => {
         canvases.forEach((canvas, k) => {
           const run = (self) => { prog[k] = lerp(0.1, 1, self.progress); draw(k); };
-          ScrollTrigger.create({ trigger: canvas, start: 'top 88%', end: 'bottom 55%', scrub: true, onUpdate: run, onRefresh: run });
+          ScrollTrigger.create({ animation: gsap.timeline(), trigger: canvas, start: 'top 88%', end: 'bottom 55%', scrub: true, onUpdate: run, onRefresh: run });
         });
       });
     }
@@ -1459,6 +1467,7 @@
     const sayTitle = say.querySelector('.rec__say-title');
     const sayDate = say.querySelector('.rec__say-meta span');
     const segment = root.querySelector('.segment');
+    const panel = root.querySelector('.rec__panel');
     const wideQuery = matchMedia('(min-width: 1024px) and (hover: hover) and (pointer: fine)');
     const still = calm();
     const DWELL = 700;
@@ -1667,6 +1676,12 @@
       dwell = null;
       if (chosen.classList.contains('is-out')) choose(shown()[0], true);
       gaze = chosen;
+      // The list just got shorter. From deep in it, bring its top back beside the filter, which stays under the hand.
+      const stuck = getComputedStyle(panel);
+      if (wide && stuck.position === 'sticky') {
+        const over = wrap.getBoundingClientRect().top - parseFloat(stuck.top);
+        if (over < 0) jump(scrollY + over);
+      }
     });
     wideQuery.addEventListener('change', setMode);
 
@@ -2038,6 +2053,7 @@
   /* Quiet layer */
   const quiet = () => {
     const still = calm();
+    document.documentElement.classList.add('reveal-on');
 
     const nav = document.querySelector('.nav');
     let lastY = scrollY;
@@ -2060,7 +2076,7 @@
 
     if ('IntersectionObserver' in window) {
       const tones = new IntersectionObserver((entries) => {
-        entries.forEach((e) => {
+        [...entries].sort((a, b) => a.isIntersecting - b.isIntersecting).forEach((e) => {
           if (e.isIntersecting) nav.dataset.tone = e.target.dataset.nav;
           else if (nav.dataset.tone === e.target.dataset.nav) delete nav.dataset.tone;
         });
@@ -2140,8 +2156,40 @@
 
   };
 
+  /* Scene heights follow the window, so after a resize the same scroll position can be in another section. Remember
+     where the reader is, as a share of the section at the top of the screen, and go back there once the page is measured. */
+  const keepPlace = () => {
+    if (!Stage.live) return;
+    const sections = [...document.querySelectorAll('main > section, .foot')];
+    let place = null;
+    let hold = 0;
+    let wasW = innerWidth;
+    let wasH = innerHeight;
+    const note = () => {
+      if (ScrollTrigger.isRefreshing || performance.now() < hold) return;
+      const section = sections.find((el) => el.getBoundingClientRect().bottom > 0) || sections[0];
+      const box = section.getBoundingClientRect();
+      place = { section, share: -box.top / box.height };
+    };
+    addEventListener('scroll', note, { passive: true });
+    addEventListener('resize', () => {
+      // A phone's address bar changes only the height, and the page must not move for that.
+      if (innerWidth === wasW && (innerHeight === wasH || Stage.touch)) return;
+      wasW = innerWidth;
+      wasH = innerHeight;
+      hold = performance.now() + 1000;
+    });
+    ScrollTrigger.addEventListener('refresh', () => {
+      if (!place || performance.now() >= hold) return;
+      const box = place.section.getBoundingClientRect();
+      scrollTo({ top: box.top + scrollY + place.share * box.height, behavior: 'instant' });
+    });
+    note();
+  };
+
   Stage.smooth();
   Stage.init();
+  keepPlace();
   quiet();
   tool();
   flow();

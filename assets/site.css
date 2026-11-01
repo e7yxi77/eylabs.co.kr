@@ -35,6 +35,7 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; scroll-padding-top: var(--nav); scroll-behavior: smooth; }
+section[id], .project[id] { scroll-margin-top: calc(-1 * var(--nav)); }
 html.is-smooth { scroll-behavior: auto; }
 body {
   margin: 0;
@@ -47,7 +48,7 @@ body {
   overflow-wrap: break-word;
   -webkit-font-smoothing: antialiased;
 }
-h1, h2, p, ul, ol, dl, dd, figure, pre { margin: 0; }
+h1, h2, p, ul, ol, dl, dd { margin: 0; }
 ul, ol { padding: 0; list-style: none; }
 canvas { display: block; }
 a { color: inherit; }
@@ -86,8 +87,8 @@ button { font: inherit; }
   background: var(--accent);
   color: var(--accent-ink);
   font-weight: 600;
+  text-align: center;
   text-decoration: none;
-  white-space: nowrap;
   cursor: pointer;
   touch-action: manipulation;
   transition: transform var(--t-press) var(--ease-out), background-color var(--t-hover) ease;
@@ -102,6 +103,7 @@ button { font: inherit; }
 
 /* Navigation: a plain band that steps out of the way while scrolling down. */
 .nav {
+  container-type: inline-size;
   position: fixed;
   inset: 0 0 auto;
   z-index: 10;
@@ -123,8 +125,8 @@ button { font: inherit; }
 .nav[data-tone="accent"] { --nav-ground: var(--accent); color: var(--accent-ink); }
 .nav[data-tone="accent"] .button { background: var(--accent-ink); color: var(--accent); }
 .nav[data-tone="accent"] .logo { --logo-ink: #ffffff; --logo-blue: #ffffff; }
-.nav__mark { margin-right: auto; }
-.logo--line { height: 26px; transition: transform var(--t-press) var(--ease-out); }
+.nav__mark { flex-shrink: 1; min-width: 0; margin-right: auto; }
+.logo--line { max-width: 100%; height: 26px; transition: transform var(--t-press) var(--ease-out); }
 .nav__mark:active .logo { transform: scale(0.97); }
 .nav[data-tone="dark"] .logo, .nav.on-dark .logo { --logo-ink: #ffffff; }
 .nav__links { display: flex; gap: clamp(16px, 2.4vw, 32px); font-size: 0.9375rem; font-weight: 500; }
@@ -141,8 +143,12 @@ button { font: inherit; }
 .nav__menu { display: none; }
 .nav__menu summary { list-style: none; user-select: none; }
 .nav__menu summary::-webkit-details-marker { display: none; }
-.nav__menu nav { position: absolute; inset: 100% 0 auto; display: grid; padding: 4px var(--margin) 16px; background: var(--nav-ground, var(--bg)); }
+.nav__menu nav { position: absolute; inset: 100% 0 auto; display: grid; gap: 8px; max-height: calc(100svh - var(--nav)); overflow: hidden auto; overscroll-behavior: contain; padding: 4px var(--margin) 16px; background: var(--nav-ground, var(--bg)); }
 .nav__menu a { display: flex; align-items: center; min-height: 48px; font-size: var(--step-lead); font-weight: 500; letter-spacing: -0.025em; text-decoration: none; }
+@container (max-width: 44rem) {
+  .nav__links { display: none; }
+  .nav__menu { display: block; }
+}
 
 /* Masked lines */
 .lines .line { display: block; overflow: clip; overflow-clip-margin: 0.04em; }
@@ -236,7 +242,8 @@ html.js .opening:not(.is-rest) .opening__claim { color: var(--field-1-ink); opac
 .what { padding-top: var(--gap); }
 .what > .head { padding-inline: var(--margin); }
 .what__list { --tab: clamp(64px, 9.5svh, 96px); margin-top: clamp(32px, 4.4vw, 64px); }
-.sheet { position: sticky; top: calc(var(--i) * var(--tab)); display: flex; flex-direction: column; min-height: calc(100svh - var(--i) * var(--tab)); padding: 0 var(--margin) clamp(24px, 3svh, 40px); border-radius: var(--radius) var(--radius) 0 0; }
+.nav:not(.is-away) ~ main .sheet, .nav:not(.is-away) ~ main .rec__panel .head, .nav:not(.is-away) ~ main .rec__dots { --stick: var(--nav); }
+.sheet { position: sticky; top: calc(var(--stick, 0px) + var(--i) * var(--tab)); transition: top 300ms var(--ease-out); display: flex; flex-direction: column; min-height: calc(100svh - var(--i) * var(--tab)); padding: 0 var(--margin) clamp(24px, 3svh, 40px); border-radius: var(--radius) var(--radius) 0 0; }
 .sheet--blue { background: var(--accent); color: var(--accent-ink); }
 .sheet--pale { background: var(--surface); color: var(--ink); }
 .sheet--ink { background: var(--field-1); color: var(--field-1-ink); }
@@ -250,6 +257,8 @@ html.js .sheet__art { display: block; position: relative; min-height: 200px; }
 .what__items { display: grid; gap: 6px; font-weight: 500; line-height: 1.45; }
 .what__more { display: flex; flex-wrap: wrap; gap: 4px 20px; margin-top: auto; }
 .what__more a { font-weight: 600; text-underline-offset: 0.2em; text-decoration-thickness: 2px; }
+/* A link in a stuck sheet can sit under the next one, so while the keyboard is in the list the sheets lie flat. */
+.what__list:has(a:focus-visible) .sheet { position: relative; top: auto; }
 
 /* Path: one line changes from a tangle into a plan, a made thing, and a rising business. */
 .path { background: var(--field-1); color: var(--field-1-ink); }
@@ -293,7 +302,7 @@ html.js .path.is-live canvas { position: absolute; inset: 0; height: 100%; margi
 }
 
 /* Tool: three fields side by side, and one thread that crosses all of them without a break. */
-.tool { padding-top: clamp(48px, 6vw, 96px); }
+.tool { padding-top: clamp(64px, 6vw, 96px); }
 .tool__top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 12px var(--gutter); padding-inline: var(--margin); }
 .tool__note { color: var(--muted); }
 .tool__strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: clamp(32px, 4.4vw, 64px); }
@@ -310,7 +319,7 @@ html.js .tool__plot { display: block; position: relative; min-height: 200px; mar
 .tool__read { font-size: 1rem; font-weight: 600; font-variant-numeric: tabular-nums; }
 
 /* Segmented control */
-[data-ui].segment, [data-ui] .segment {
+[data-ui].segment {
   position: relative;
   display: inline-grid;
   grid-template-columns: repeat(var(--n, 2), minmax(0, 1fr));
@@ -398,13 +407,13 @@ html.js .project__view { display: block; position: relative; min-height: clamp(2
 .project--ink .project__view { background: var(--field-1); }
 .project--blue .project__view { background: var(--accent); }
 .project--pale .project__view { background: var(--surface); }
-.project__body { display: grid; justify-items: start; gap: clamp(14px, 1.6vw, 22px); padding: clamp(24px, 3.4vw, 56px) var(--margin) clamp(40px, 5vw, 80px); }
-.project__name { display: flex; align-items: center; gap: 0.28em; margin: 0; font-size: var(--step-name); font-weight: 600; line-height: 1.1; letter-spacing: -0.035em; }
+.project__body { display: grid; grid-template-columns: minmax(0, 1fr); justify-items: start; gap: clamp(14px, 1.6vw, 22px); padding: clamp(24px, 3.4vw, 56px) var(--margin) clamp(40px, 5vw, 80px); }
+.project__name { display: flex; flex-wrap: wrap; align-items: center; gap: 0.28em; margin: 0; overflow-wrap: anywhere; font-size: var(--step-name); font-weight: 600; line-height: 1.1; letter-spacing: -0.035em; }
 .project__logo { flex: none; width: auto; height: 1.1em; }
 .logos { display: flex; flex-wrap: wrap; gap: 8px; }
 .project__facts .logos { margin-top: 8px; }
 /* Most of the backers' marks are white type made for a dark ground, so they sit on small dark tiles wherever they appear. */
-.chip { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 8px 12px; border-radius: 10px; background: var(--field-1); color: var(--field-1-ink); font-size: 0.875rem; font-weight: 600; line-height: 1.2; text-decoration: none; transition: background-color var(--t-hover) ease, transform var(--t-press) var(--ease-out); }
+.chip { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; min-height: 40px; overflow-wrap: anywhere; padding: 8px 12px; border-radius: 10px; background: var(--field-1); color: var(--field-1-ink); font-size: 0.875rem; font-weight: 600; line-height: 1.2; text-decoration: none; transition: background-color var(--t-hover) ease, transform var(--t-press) var(--ease-out); }
 .chip img { display: block; flex: none; width: auto; height: 18px; }
 .chip__invert { filter: invert(1); }
 .chip--light { background: var(--surface); color: var(--ink); }
@@ -438,9 +447,9 @@ a.chip:active { transform: scale(0.97); }
 .rec__panel .record__top { display: contents; }
 .rec__panel .head { background: var(--accent); }
 .record__hint, .rec__panel .segment { margin-top: clamp(12px, 1.6vw, 20px); justify-self: start; align-self: flex-start; }
-html.js .rec__panel .head { position: sticky; top: 0; z-index: 4; padding-block: 8px 0; }
+html.js .rec__panel .head { position: sticky; top: var(--stick, 0px); z-index: 4; padding-block: 8px 0; transition: top 300ms var(--ease-out); }
 .rec__dots { display: none; }
-html.js .rec__dots { display: block; position: sticky; top: calc(var(--step-head) * 1.1 + 8px); z-index: 3; width: 100%; height: clamp(96px, 16svh, 150px); margin-block: 12px 8px; padding: 0; background: var(--accent); }
+html.js .rec__dots { display: block; position: sticky; top: calc(var(--stick, 0px) + var(--step-head) * 1.1 + 8px); transition: top 300ms var(--ease-out); z-index: 3; width: 100%; height: clamp(96px, 16svh, 150px); margin-block: 12px 8px; padding: 0; background: var(--accent); }
 .rec__say { display: none; }
 .rec__say-meta { display: flex; flex-wrap: wrap; gap: 0 1em; margin-top: 4px; font-size: 0.9375rem; font-weight: 500; font-variant-numeric: tabular-nums; }
 .rec__wrap { position: relative; margin-inline: -12px; }
@@ -465,6 +474,8 @@ html.js .rec__dots { display: block; position: sticky; top: calc(var(--step-head
 .rec__icon { display: inline-grid; place-items: center; vertical-align: -0.2em; width: 1.25em; height: 1.25em; margin-right: 0.35em; border-radius: 0.3em; background: #ffffff; }
 .rec__icon img { display: block; width: 0.9em; height: 0.9em; }
 .rec__desc a:not(.chip) { display: inline-block; margin-top: 6px; font-weight: 600; text-underline-offset: 0.18em; text-decoration-thickness: 2px; }
+/* Focus stops below the stuck title and display. */
+html.js .rec__desc a { scroll-margin-top: calc(var(--step-head) * 1.1 + 8px + clamp(96px, 16svh, 150px) + 12px); }
 [data-ui].rec__ring, [data-ui].rec__mark { position: absolute; top: 0; left: 0; right: 0; border-radius: 18px; pointer-events: none; will-change: transform, height; }
 [data-ui].rec__ring { z-index: 2; overflow: clip; border: 2px solid #ffffff; }
 [data-ui].rec__ring i { position: absolute; inset: 0; display: block; background: #ffffff; opacity: 0.2; transform: scaleX(0); transform-origin: left center; }
@@ -487,6 +498,7 @@ html:not(.js) [data-ui].rec__ring { display: none; }
   html.js .rec__name { grid-column: 2; grid-row: 1; }
   html.js [data-ui].rec__mark { display: block; }
   html.js .rec.is-on { color: var(--accent); }
+  html.js .rec__desc a { scroll-margin-top: 0; }
 }
 
 /* Contact: two sets of lines meet and interlock above the ways to reach the company. */
@@ -501,7 +513,7 @@ html.js .contact__weave { display: block; width: 100%; height: clamp(180px, 36sv
 .reach small { grid-column: 2; font-size: 0.9375rem; font-weight: 500; }
 .reach a:active { transform: scale(0.98); }
 .reach span { font-size: 0.9375rem; font-weight: 500; }
-.reach b { font-size: min(var(--step-lead), 5.1vw); font-weight: 650; letter-spacing: -0.025em; font-variant-numeric: tabular-nums; white-space: nowrap; transition: color var(--t-hover) ease; }
+.reach b { font-size: min(var(--step-lead), 5.1vw); font-weight: 650; letter-spacing: -0.025em; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; transition: color var(--t-hover) ease; }
 @media (hover: hover) and (pointer: fine) {
   .reach a:hover b { color: var(--accent); }
 }
@@ -516,6 +528,7 @@ html.js .contact__weave { display: block; width: 100%; height: clamp(180px, 36sv
   color: var(--field-1-ink);
 }
 .foot a { color: inherit; text-underline-offset: 0.2em; }
+.foot__info a { flex-wrap: wrap; min-width: 0; overflow-wrap: anywhere; }
 .foot__logo { display: block; width: fit-content; align-self: start; transition: transform var(--t-press) var(--ease-out); }
 .foot__logo:active { transform: scale(0.97); }
 .foot__logo:focus-visible, .foot a:focus-visible { outline-color: var(--signal); }
@@ -528,8 +541,8 @@ html.js .contact__weave { display: block; width: 100%; height: clamp(180px, 36sv
 
 /* Quiet layer */
 @media (prefers-reduced-motion: no-preference) {
-  .js [data-reveal] { opacity: 0; transform: translateY(24px); transition: opacity 700ms var(--ease-out), transform 900ms var(--ease-out); transition-delay: var(--d, 0ms); }
-  .js [data-reveal].is-in { opacity: 1; transform: none; }
+  .reveal-on [data-reveal] { opacity: 0; transform: translateY(24px); transition: opacity 700ms var(--ease-out), transform 900ms var(--ease-out); transition-delay: var(--d, 0ms); }
+  .reveal-on [data-reveal].is-in { opacity: 1; transform: none; }
 
   [data-lines] .line { display: block; overflow: clip; overflow-clip-margin: 0.04em; }
   [data-lines] .line > span { display: block; }
@@ -538,6 +551,8 @@ html.js .contact__weave { display: block; width: 100%; height: clamp(180px, 36sv
 }
 
 @media (min-width: 1024px) {
+  /* Room for the link at the foot of a sheet while the nav pushes the stuck sheets down. */
+  .sheet { padding-bottom: calc(var(--nav) + 8px); }
   html.js .project { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); }
   html.js .project__view { min-height: 0; }
   /* The copy holds beside the line, a little above the middle, and leaves the foot of the screen alone. */
@@ -568,21 +583,38 @@ html.js .contact__weave { display: block; width: 100%; height: clamp(180px, 36sv
 @media (max-height: 700px) {
   .sheet { position: relative; top: auto; min-height: 0; }
   html.js .rec__panel .head, html.js .rec__dots { position: static; }
+  html.js .rec__desc a { scroll-margin-top: 0; }
 }
+/* The same when the visitor has set larger text in the browser. The scenes rest then too (stage.js). */
+html.big-type .sheet { position: relative; top: auto; min-height: 0; }
+html.big-type .rec__panel, html.big-type .rec__panel .head, html.big-type .rec__dots { position: static; }
+html.big-type .rec__desc a { scroll-margin-top: 0; }
+html.big-type .record .segment { display: flex; flex-wrap: wrap; gap: 8px; border-radius: 28px; }
+html.big-type .record .segment__thumb { display: none; }
+html.big-type .record .segment button { flex: 1 1 auto; padding-inline: 12px; }
+html.big-type .record .segment button[aria-pressed="true"] { background: #ffffff; }
+html.big-type [data-ui].flow__graph { height: max(clamp(380px, 62svh, 620px), 32.5rem); }
+html.big-type [data-ui] .flow__bin { max-width: 30%; white-space: normal; }
 @media (max-height: 500px) and (orientation: landscape) {
   .why.is-live { --clear: 40px; }
   .why.is-live .why__from > p, .why.is-live .why__to > p:last-child { font-size: 1rem; }
   html.js .opening:not(.is-rest) .opening__say .lead { font-size: 1.0625rem; }
   .opening { --type: min(calc((100vw - 2 * var(--margin)) / 10), 13svh); }
 }
+@media (max-height: 500px) and (orientation: landscape) and (min-width: 768px) {
+  .path.is-live .path__copy { width: 44%; }
+  .path.is-live .path__stack { grid-template-columns: minmax(0, 1fr); }
+  .path.is-live .path__title { width: auto; max-width: none; }
+}
 
 /* Touch: controls big enough for a thumb, text links with room around them, press feedback and no stray selection. */
 a, button, summary { touch-action: manipulation; }
 button, summary, .button { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 @media (pointer: coarse) {
-  .button--small, [data-ui] .segment button, [data-ui].segment button, .chip { min-height: 44px; }
+  .button--small, [data-ui].segment button, .chip { min-height: 44px; }
   .nav__mark { display: inline-flex; align-items: center; min-height: 44px; }
-  .what__more a, .rec__desc a, .foot a, .nav__links a { display: inline-flex; align-items: center; min-height: 44px; margin-top: 0; }
+  .what__more a, .rec__desc a:not(.chip), .foot a, .nav__links a { display: inline-flex; align-items: center; min-height: 44px; margin-top: 0; }
+  .nav__links a { justify-content: center; min-width: 44px; }
   .what__more a:active, .rec__desc a:active, .foot a:active, .nav__menu a:active { opacity: 0.6; }
   .reach a { min-height: 44px; padding-block: 4px; }
   [data-ui] .flow__gate { min-height: 60px; }
@@ -619,6 +651,6 @@ button, summary, .button { -webkit-user-select: none; user-select: none; -webkit
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  .nav, .button, .segment__thumb { transition: none; }
+  .nav, .button, .segment__thumb, .sheet, html.js .rec__panel .head, html.js .rec__dots { transition: none; }
   .pushed__line { white-space: normal; width: auto; }
 }
