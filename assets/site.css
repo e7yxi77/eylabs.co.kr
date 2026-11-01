@@ -122,7 +122,7 @@ button { font: inherit; }
 
 /* Opening. Finished composition first: the sentence, the tangle, the claim. */
 .opening .scene-stage { padding: calc(var(--nav) + 24px) var(--margin) 0; }
-.opening__second { text-align: right; }
+.opening__room { display: none; }
 .strands { display: none; }
 html.js .strands { display: block; width: 100%; height: 34svh; margin-block: 12px; }
 .opening__say { display: flex; flex-direction: column; align-items: flex-start; gap: clamp(12px, 1.4vw, 20px); max-width: 36rem; margin-top: clamp(16px, 2vw, 28px); }
@@ -135,21 +135,29 @@ html.js .opening:not(.is-rest) .strands { position: absolute; inset: 0; height: 
 html.js .opening:not(.is-rest) .opening__title {
   position: absolute;
   z-index: 2;
-  inset: calc(var(--nav) + clamp(8px, 2.4svh, 28px)) var(--margin) clamp(20px, 3.2svh, 36px);
+  inset: calc(var(--nav) + clamp(8px, 2.4svh, 28px)) var(--margin) auto;
   display: flex;
-  flex-direction: column;
-  justify-content: space-between;
+  gap: 0.24em;
 }
-html.js .opening:not(.is-rest) .opening__first { align-self: flex-start; }
-html.js .opening:not(.is-rest) .opening__second { align-self: flex-end; }
+/* The knot's room, held where it has always been so the graphic does not follow the type. */
+html.js .opening:not(.is-rest) .opening__room {
+  position: absolute;
+  display: block;
+  inset: calc(var(--nav) + clamp(8px, 2.4svh, 28px) + var(--display) * 0.98) 0 calc(clamp(20px, 3.2svh, 36px) + var(--display) * 0.98);
+  visibility: hidden;
+}
 html.js .opening:not(.is-rest) .opening__say {
   position: absolute;
   z-index: 3;
-  left: var(--margin);
-  bottom: clamp(20px, 3.2svh, 36px);
+  inset: auto var(--margin) clamp(20px, 3.2svh, 36px);
+  flex-direction: row;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--gutter);
   margin: 0;
-  max-width: min(36rem, 44vw);
+  max-width: none;
 }
+html.js .opening:not(.is-rest) .opening__say .lead { max-width: min(36rem, 44vw); }
 html.js .opening:not(.is-rest) .opening__end {
   position: absolute;
   z-index: 4;
@@ -203,24 +211,22 @@ html.js .path.is-live canvas { position: absolute; inset: 0; height: 100%; margi
   .pushed__line { color: var(--bg); -webkit-text-stroke: 3px #c4c4c4; paint-order: stroke fill; }
 }
 
-/* Signal: one chart that changes meaning as the page scrolls. */
-.signal .scene-stage { padding: clamp(48px, 6vw, 96px) var(--margin); }
-.signal__chart { display: none; position: relative; }
-html.js .signal__chart { display: block; height: clamp(300px, 56svh, 620px); margin-block: clamp(24px, 3vw, 40px); }
-.signal__chart canvas { width: 100%; height: 100%; }
-.signal__reads { position: absolute; top: 0; right: 0; display: grid; justify-items: end; text-align: right; }
-.signal__reads span { grid-area: 1 / 1; font-weight: 650; font-variant-numeric: tabular-nums; }
-.signal__foot { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--gutter); align-items: end; }
-.signal__beats { display: grid; gap: 0.6em; }
-.signal__note { text-align: right; }
-.signal__count { display: none; font-variant-numeric: tabular-nums; }
-
-.signal:not(.is-live) .signal__reads span:not(:last-child) { display: none; }
-.signal.is-live .scene-stage { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; padding: clamp(16px, 4svh, 40px) var(--margin) clamp(16px, 3.4svh, 36px); }
-.signal.is-live .signal__chart { height: auto; min-height: 0; margin-block: clamp(10px, 2svh, 24px); }
-.signal.is-live .signal__beats { gap: 0; min-height: calc(var(--step-lead) * 1.4 * 2); align-content: end; }
-.signal.is-live .signal__beats li { grid-area: 1 / 1; align-self: end; max-width: 30em; }
-.signal.is-live .signal__count { display: inline; margin-right: 1em; }
+/* Tool: three fields side by side, and one thread that crosses all of them without a break. */
+.tool { padding-top: clamp(48px, 6vw, 96px); }
+.tool__top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 12px var(--gutter); padding-inline: var(--margin); }
+.tool__note { color: var(--muted); }
+.tool__strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: clamp(32px, 4.4vw, 64px); }
+.tool__step { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; min-height: clamp(560px, 86svh, 860px); padding-block: clamp(20px, 2.4vw, 36px); }
+.tool__step--ink { background: var(--field-1); color: var(--field-1-ink); }
+.tool__step--blue { background: var(--accent); color: var(--accent-ink); }
+.tool__step--pale { background: var(--surface); color: var(--ink); }
+.tool__verb { margin: 0; padding-inline: var(--margin); font-size: var(--step-head); font-weight: 600; line-height: 1.1; letter-spacing: -0.04em; }
+.tool__plot { display: none; }
+/* Absolute, so a canvas resized to its box can never push that box taller. */
+html.js .tool__plot { display: block; position: relative; min-height: 200px; margin-block: clamp(16px, 2vw, 28px); }
+.tool__plot canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.tool__say { display: grid; align-content: start; gap: 6px; min-height: 6.6em; padding-inline: var(--margin); }
+.tool__read { font-size: 0.9375rem; font-weight: 600; font-variant-numeric: tabular-nums; }
 
 /* Segmented control */
 [data-ui].segment, [data-ui] .segment {
@@ -356,19 +362,17 @@ html.js .rec__panel { display: block; order: -1; position: sticky; top: 0; z-ind
 .rec__dots { width: 100%; height: clamp(150px, 24svh, 230px); }
 .rec__say { display: none; }
 .rec__say-meta { display: flex; flex-wrap: wrap; gap: 0 1em; margin-top: 4px; font-size: 0.9375rem; font-weight: 500; font-variant-numeric: tabular-nums; }
-.rec__say-desc { max-width: 34em; margin-top: 12px; font-weight: 500; }
 .rec__wrap { position: relative; margin-inline: -12px; }
 .rec__list { position: relative; z-index: 1; }
 .rec { display: grid; grid-template-rows: 1fr; transition: grid-template-rows 380ms var(--ease-out), opacity 200ms ease, color var(--t-hover) ease; }
 .rec.is-out { grid-template-rows: 0fr; opacity: 0; }
 .rec__clip { min-height: 0; overflow: clip; }
-.rec__row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px var(--gutter); padding: 14px 12px; }
-.rec__date, .rec__who { font-size: 0.9375rem; font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.rec__name { grid-column: 1 / -1; }
+.rec__row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px var(--gutter); padding: 14px 12px; }
+.rec__date { font-size: 0.9375rem; font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .rec__title { font-size: var(--step-row); font-weight: 600; line-height: 1.25; letter-spacing: -0.025em; margin: 0; }
 .rec__result { font-weight: 500; line-height: 1.4; }
-.rec__desc { grid-column: 1 / -1; margin-top: 6px; font-weight: 500; }
-.rec__desc a, .rec__say-desc a { display: inline-block; margin-top: 6px; font-weight: 600; text-underline-offset: 0.18em; text-decoration-thickness: 2px; }
+.rec__desc { max-width: 38em; margin-top: 6px; font-size: var(--step-small); font-weight: 500; line-height: 1.55; }
+.rec__desc a { display: inline-block; margin-top: 6px; font-weight: 600; text-underline-offset: 0.18em; text-decoration-thickness: 2px; }
 [data-ui].rec__ring, [data-ui].rec__mark { position: absolute; top: 0; left: 0; right: 0; border-radius: 18px; pointer-events: none; will-change: transform, height; }
 [data-ui].rec__ring { z-index: 2; overflow: clip; border: 2px solid #ffffff; }
 [data-ui].rec__ring i { position: absolute; inset: 0; display: block; background: #ffffff; opacity: 0.2; transform: scaleX(0); transform-origin: left center; }
@@ -382,12 +386,10 @@ html:not(.js) [data-ui].rec__ring { display: none; }
   html.js .rec__wrap { grid-column: 1; grid-row: 1; }
   html.js .rec__panel { grid-column: 2; grid-row: 1; order: 0; top: calc(var(--nav) + 12px); padding: 0; background: none; }
   html.js .rec__dots { height: clamp(240px, 44svh, 420px); }
-  html.js .rec__say { display: block; min-height: 11.5em; margin-top: clamp(16px, 2vw, 28px); }
-  html.js .rec__row { grid-template-columns: 9.5em minmax(0, 1fr) auto; align-items: baseline; cursor: pointer; }
+  html.js .rec__say { display: block; margin-top: clamp(16px, 2vw, 28px); }
+  html.js .rec__row { grid-template-columns: 9.5em minmax(0, 1fr); align-items: baseline; cursor: pointer; }
   html.js .rec__date { grid-column: 1; grid-row: 1; }
   html.js .rec__name { grid-column: 2; grid-row: 1; }
-  html.js .rec__who { grid-column: 3; grid-row: 1; }
-  html.js .rec__desc { display: none; }
   html.js [data-ui].rec__mark { display: block; }
   html.js .rec.is-on { color: var(--accent); }
 }
@@ -397,7 +399,7 @@ html:not(.js) [data-ui].rec__ring { display: none; }
 .contact__weave { display: none; }
 html.js .contact__weave { display: block; width: 100%; height: clamp(180px, 36svh, 380px); touch-action: pan-y; }
 .contact__body { margin-top: clamp(40px, 5vw, 72px); padding-inline: var(--margin); }
-.reach { display: grid; grid-auto-flow: column; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(3, auto); gap: clamp(14px, 1.6vw, 22px) var(--gutter); margin-top: clamp(32px, 4vw, 56px); }
+.reach { display: grid; grid-auto-flow: column; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(2, auto); gap: clamp(14px, 1.6vw, 22px) var(--gutter); margin-top: clamp(32px, 4vw, 56px); }
 .reach a { display: grid; grid-template-columns: 6em minmax(0, 1fr); column-gap: 12px; align-items: baseline; text-decoration: none; transition: transform var(--t-press) var(--ease-out); transform-origin: left center; }
 .reach small { grid-column: 2; font-size: 0.9375rem; font-weight: 500; }
 .reach a:active { transform: scale(0.98); }
@@ -439,6 +441,10 @@ html.js .contact__weave { display: block; width: 100%; height: clamp(180px, 36sv
 }
 
 @media (max-width: 1023px) {
+  .tool__strip { grid-template-columns: minmax(0, 1fr); }
+  .tool__step { min-height: 0; }
+  html.js .tool__plot { height: clamp(200px, 34svh, 320px); }
+  .tool__say { min-height: 0; }
   .reach { grid-auto-flow: row; grid-template-columns: minmax(0, 1fr); grid-template-rows: none; }
 }
 
@@ -447,17 +453,13 @@ html.js .contact__weave { display: block; width: 100%; height: clamp(180px, 36sv
   .reach a { grid-template-columns: 5.4em minmax(0, 1fr); column-gap: 8px; }
   :root { --display: min(25.4vw, 17svh); --radius: 22px; }
   .nav__links { display: none; }
-  html.js .opening:not(.is-rest) .opening__title { bottom: calc(var(--say-h, 160px) + var(--margin) + 8px); inset-inline: var(--margin); }
-  html.js .opening:not(.is-rest) .opening__second { align-self: flex-start; }
-  .opening__second { text-align: left; }
-  html.js .opening:not(.is-rest) .opening__say { left: var(--margin); right: var(--margin); bottom: var(--margin); max-width: none; }
+  html.js .opening:not(.is-rest) .opening__title { bottom: calc(var(--say-h, 160px) + var(--margin) + 8px); inset-inline: var(--margin); flex-direction: column; justify-content: space-between; gap: 0; }
+  html.js .opening:not(.is-rest) .opening__room { bottom: calc(var(--say-h, 160px) + var(--margin) + 8px + var(--display) * 0.98); }
+  html.js .opening:not(.is-rest) .opening__say { inset: auto var(--margin) var(--margin); flex-direction: column; align-items: flex-start; }
+  html.js .opening:not(.is-rest) .opening__say .lead { max-width: none; }
 
   html.js .path.is-live .path__copy { width: auto; right: var(--margin); }
   .path.is-live .path__beats { min-height: calc(var(--step-head) * 1.1 * 2); }
-
-  .signal__foot { grid-template-columns: minmax(0, 1fr); }
-  .signal__note { text-align: left; }
-  .signal.is-live .signal__beats { min-height: calc(var(--step-lead) * 1.4 * 3); }
 
   [data-ui].lab__grid { grid-template-columns: minmax(0, 1fr); }
   [data-ui] .lab__field { min-height: 0; aspect-ratio: 1 / 1; }

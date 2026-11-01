@@ -72,12 +72,11 @@
 
     const measure = () => {
       view = fit(canvas);
-      const a = first.getBoundingClientRect();
-      const b = second.getBoundingClientRect();
-      const c = stage.getBoundingClientRect();
       root.style.setProperty('--say-h', `${say.offsetHeight}px`);
-      const top = a.bottom - c.top;
-      const bottom = b.top - c.top;
+      const a = root.querySelector('.opening__room').getBoundingClientRect();
+      const c = stage.getBoundingClientRect();
+      const top = a.top - c.top;
+      const bottom = a.bottom - c.top;
       const room = Math.max(120, bottom - top);
       g = {
         cx: view.w * (small ? 0.4 : 0.31),
@@ -130,7 +129,7 @@
       const u = smooth(span(p, 0, 0.42));
       const wide = smooth(span(p, 0.3, 0.6));
       const fat = smooth(span(p, 0.52, 0.84));
-      nav.classList.toggle('on-dark', fat > 0.7);
+      nav.classList.toggle('on-dark', fat > 0.7 && root.getBoundingClientRect().bottom > 0);
       ctx.clearRect(0, 0, w, h);
       const band = lerp(g.band, h * 1.08, wide);
       const gap = band / COUNT;
@@ -557,227 +556,148 @@
     return mm;
   };
 
-  /* Signal: candidates are compared, one is tuned, then its lines become a band around the data. */
-  Scenes.signal = (root, o = {}) => {
-    const canvas = root.querySelector('canvas');
-    const count = root.querySelector('.signal__count');
-    const N = 240;
+  /* Tool: one thread crosses three fields. Six candidates narrow to one, that one is tuned, and it goes to work
+     on live data. The scroll draws it from left to right; stacked, each field draws its own part. */
+  const tool = () => {
+    const root = document.querySelector('.tool');
+    const canvases = [...root.querySelectorAll('canvas')];
     const random = seeded(7);
-    const noise = () => {
-      const parts = Array.from({ length: 5 }, (_, i) => ({ f: 3 + i * i * 4 + random() * 6, ph: random() * 6.28, a: 1 / (i + 1) }));
-      return Array.from({ length: N }, (_, i) => {
-        const x = i / (N - 1);
-        const wave = parts.reduce((sum, c) => sum + c.a * Math.sin(c.f * x * 6.28 + c.ph), 0) / 2.3;
-        return wave * 0.8 + (random() - 0.5) * 0.5;
-      });
+    const N = 160;
+    const wiggle = () => {
+      const parts = Array.from({ length: 4 }, (_, i) => ({ f: 2 + i * 3 + random() * 3, ph: random() * TAU, a: 1 / (i + 1) }));
+      return (x) => parts.reduce((sum, c) => sum + c.a * Math.sin(c.f * x * TAU + c.ph), 0) / 2;
     };
-    const decay = (plateau, speed, amp) => {
-      const n = noise();
-      return Array.from({ length: N }, (_, i) => {
-        const x = i / (N - 1);
-        return plateau - (plateau - 0.05) * Math.exp(-speed * x) + amp * n[i] * (0.3 + 0.7 * Math.exp(-2.2 * x));
-      });
-    };
-    const before = decay(0.72, 5, 0.028);
-    const candidates = [before, decay(0.6, 3.2, 0.03), decay(0.66, 6.5, 0.03), decay(0.5, 2.6, 0.03), decay(0.44, 4, 0.03), decay(0.55, 7, 0.03)];
-    const tuned = decay(0.91, 4.2, 0.018);
-    const mid = (x) => 0.6 + 0.065 * Math.sin(6.28 * (1.2 * x + 0.1)) + 0.03 * Math.sin(6.28 * 3.1 * x);
-    const spikes = [[0.24, 0.3], [0.57, 0.34], [0.82, 0.27]];
-    const seriesNoise = noise();
-    const series = Array.from({ length: N }, (_, i) => {
-      const x = i / (N - 1);
-      const peak = spikes.reduce((sum, [at, h]) => sum + h * Math.exp(-((x - at) ** 2) / 0.00009), 0);
-      return mid(x) + 0.04 * seriesNoise[i] - peak;
-    });
-    const upper = Array.from({ length: N }, (_, i) => mid(i / (N - 1)) - 0.12);
-    const lower = Array.from({ length: N }, (_, i) => mid(i / (N - 1)) + 0.12);
-    const shapes = [
-      { a: candidates[0], b: tuned, c: series },
-      { a: candidates[1], b: before, c: upper },
-      { a: candidates[2], b: candidates[2], c: lower },
-      { a: candidates[3], b: candidates[3], c: candidates[3] },
-      { a: candidates[4], b: candidates[4], c: candidates[4] },
-      { a: candidates[5], b: candidates[5], c: candidates[5] },
-    ];
-    const names = ['A', 'B', 'C', 'D', 'E', 'F'];
-    const dots = spikes.map(([at]) => Math.round(at * (N - 1)));
-    const s = { t: 0, enter: 0 };
-    let view = null;
-    const font = (size, weight = 500) => `${weight} ${size}px "Pretendard Variable", Pretendard, sans-serif`;
-    const HEAD_START = 0.42;
-    const INK = '29,29,29';
-    const BLUE = '0,108,255';
+    const SEAM_A = 0.34;
+    const SEAM_B = 0.74;
 
-    const draw = () => {
+    // Review: six lines come in apart. Five stop where they were dropped; the chosen one runs on to the seam.
+    const review = [0.1, 0.25, 0.42, 0.58, 0.74, 0.9].map((y0, k) => {
+      const w = wiggle();
+      const chosen = k === 1;
+      const end = chosen ? 1 : [0.5, 0, 0.72, 0.42, 0.86, 0.62][k];
+      const goal = chosen ? SEAM_A : lerp(y0, 0.5, 0.45);
+      return { chosen, end, y: (x) => lerp(y0, goal, smooth(x / (chosen ? 1 : Math.max(end, 0.01)))) + 0.018 * w(x) * (chosen ? Math.sin(Math.PI * x) : 1) };
+    });
+    // Tuning: runs fall as error falls; the kept run falls furthest and settles.
+    const tuning = [[0.5, 0.05, false], [0.6, 0.06, false], [SEAM_B, 0.045, true]].map(([floor, amp, chosen]) => {
+      const w = wiggle();
+      return { chosen, end: chosen ? 1 : 0.9, y: (x) => lerp(SEAM_A, floor, 1 - Math.exp(-4.4 * x)) + amp * w(x) * Math.sin(Math.PI * Math.min(1, x * 1.15)) * Math.exp(-2.4 * x) + (chosen ? (SEAM_B - lerp(SEAM_A, floor, 1 - Math.exp(-4.4))) * x : 0) };
+    });
+    // Decision: the line holds a band around normal, and three moves leave the band.
+    const w3 = wiggle();
+    const mid = (x) => lerp(SEAM_B, 0.56, smooth(Math.min(1, x / 0.14))) + 0.022 * Math.sin(TAU * 1.3 * x) * Math.min(1, x / 0.14);
+    const spikes = [[0.3, 0.3], [0.56, 0.36], [0.8, 0.27]];
+    const live = (x) => mid(x) + 0.016 * w3(x) * Math.min(1, x / 0.14) - spikes.reduce((sum, [at, up]) => sum + up * Math.exp(-((x - at) ** 2) / 0.00028), 0);
+
+    const TONES = [
+      { thread: '77,155,255', rest: '255,255,255', dot: '#4d9bff' },
+      { thread: '255,255,255', rest: '255,255,255', dot: '#ffffff' },
+      { thread: '0,108,255', rest: '29,29,29', dot: '#006cff' },
+    ];
+    const prog = [0, 0, 0];
+    const views = [];
+
+    const stroke = (ctx, X, Y, fn, until) => {
+      ctx.beginPath();
+      const last = Math.floor(until * N);
+      for (let i = 0; i <= last; i++) {
+        const x = i / N;
+        if (i) ctx.lineTo(X(x), Y(fn(x))); else ctx.moveTo(X(x), Y(fn(x)));
+      }
+      if (until * N > last) ctx.lineTo(X(until), Y(fn(until)));
+      ctx.stroke();
+    };
+    const dot = (ctx, x, y, r) => { ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill(); };
+
+    const draw = (k) => {
+      const view = views[k];
       if (!view) return;
       const { ctx, w, h } = view;
-      const t = s.t;
-      const phone = w < 640;
-      const pad = { l: 0, r: phone ? 58 : 92, t: 8, b: 28 };
-      const X = (x) => pad.l + x * (w - pad.l - pad.r);
-      const Y = (y) => pad.t + y * (h - pad.t - pad.b);
-      // The lines start drawing while the chapter rises, so the held stage never opens on an empty chart.
-      const reveal = t > 0 ? lerp(HEAD_START, 1, smooth(span(t, 0, 0.2))) : HEAD_START * smooth(s.enter);
-      const pick = smooth(span(t, 0.2, 0.3));
-      const toB = smooth(span(t, 0.34, 0.46));
-      const toC = smooth(span(t, 0.64, 0.78));
+      const tone = TONES[k];
+      const p = prog[k];
+      const X = (x) => x * w;
+      const Y = (y) => y * h;
       ctx.clearRect(0, 0, w, h);
-
-      ctx.lineWidth = 1;
-      ctx.strokeStyle = `rgba(${INK},0.1)`;
-      [0, 1, 2, 3, 4].forEach((i) => {
-        const y = Y(i / 4);
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+      if (k === 2) {
+        ctx.fillStyle = 'rgba(29,29,29,0.06)';
         ctx.beginPath();
-        ctx.moveTo(pad.l, y);
-        ctx.lineTo(w, y);
-        ctx.stroke();
-      });
-
-      const at = (shape, i) => lerp(lerp(shape.a[i], shape.b[i], toB), shape.c[i], toC);
-      const last = reveal * (N - 1);
-      const alphaOf = (k) => {
-        if (k === 0) return 1;
-        if (k === 1) return lerp(lerp(0.5, 0.55, toB), 0.32, toC);
-        if (k === 2) return lerp(lerp(0.5, 0, toB), 0.32, toC);
-        return lerp(lerp(0.5, 0.14, pick), 0, toB);
-      };
-      // Flat fields give the chart mass: what the chosen model leaves under its curve, then the normal band.
-      const under = 0.14 * pick * (1 - toC);
-      if (under > 0.002) {
-        ctx.beginPath();
-        ctx.moveTo(X(0), Y(1));
-        for (let i = 0; i <= Math.floor(last); i++) ctx.lineTo(X(i / (N - 1)), Y(at(shapes[0], i)));
-        ctx.lineTo(X(Math.floor(last) / (N - 1)), Y(1));
+        for (let i = 0; i <= N; i++) ctx.lineTo(X(i / N), Y(mid(i / N) - 0.075 * smooth(Math.min(1, (i / N) / 0.14))));
+        for (let i = N; i >= 0; i--) ctx.lineTo(X(i / N), Y(mid(i / N) + 0.075 * smooth(Math.min(1, (i / N) / 0.14))));
         ctx.closePath();
-        ctx.fillStyle = `rgba(${BLUE},${under})`;
         ctx.fill();
       }
-      if (toC > 0.002) {
-        ctx.beginPath();
-        for (let i = 0; i < N; i++) ctx.lineTo(X(i / (N - 1)), Y(at(shapes[1], i)));
-        for (let i = N - 1; i >= 0; i--) ctx.lineTo(X(i / (N - 1)), Y(at(shapes[2], i)));
-        ctx.closePath();
-        ctx.fillStyle = `rgba(${INK},${0.06 * toC})`;
-        ctx.fill();
-      }
-      for (let k = shapes.length - 1; k >= 0; k--) {
-        const alpha = alphaOf(k);
-        if (alpha <= 0.002) continue;
-        const shape = shapes[k];
-        ctx.beginPath();
-        for (let i = 0; i <= Math.floor(last); i++) {
-          const px = X(i / (N - 1));
-          const py = Y(at(shape, i));
-          if (i) ctx.lineTo(px, py); else ctx.moveTo(px, py);
+      const lines = k === 0 ? review : k === 1 ? tuning : [];
+      lines.forEach((line) => {
+        if (line.chosen) return;
+        const until = Math.min(p, line.end);
+        if (until <= 0) return;
+        ctx.strokeStyle = `rgba(${tone.rest},0.42)`;
+        ctx.lineWidth = 1.25;
+        stroke(ctx, X, Y, line.y, until);
+        if (p >= line.end) {
+          ctx.fillStyle = `rgba(${tone.rest},0.7)`;
+          dot(ctx, X(line.end), Y(line.y(line.end)), 3);
         }
-        ctx.lineJoin = 'round';
-        ctx.lineCap = 'round';
-        const hot = k === 0 ? pick * (1 - toC) : 0;
-        ctx.lineWidth = k === 0 ? lerp(2.25, phone ? 3 : 3.5, pick) : phone ? 1.5 : 2;
-        const r = Math.round(lerp(29, 0, hot));
-        const g = Math.round(lerp(29, 108, hot));
-        const b = Math.round(lerp(29, 255, hot));
-        ctx.strokeStyle = `rgba(${r},${g},${b},${alpha})`;
-        ctx.stroke();
-      }
-
-      // Line ends: names while comparing, before and after while tuning.
-      ctx.textBaseline = 'middle';
-      ctx.font = font(phone ? 13 : 14);
-      const labelIn = span(t, 0.16, 0.24) * (1 - toB);
-      if (labelIn > 0) {
-        shapes.forEach((shape, k) => {
-          const chosen = k === 0;
-          const alpha = labelIn * (chosen ? 1 : lerp(0.8, 0.35, pick));
-          ctx.fillStyle = chosen ? `rgba(${BLUE},${alpha})` : `rgba(${INK},${alpha})`;
-          ctx.fillText(`${phone ? '' : '모델 '}${names[k]}`, X(1) + 10, Y(at(shape, N - 1)));
+      });
+      const thread = k === 2 ? live : lines.find((l) => l.chosen).y;
+      ctx.strokeStyle = `rgb(${tone.thread})`;
+      ctx.lineWidth = 2.5;
+      if (p > 0) stroke(ctx, X, Y, thread, p);
+      if (k === 2) {
+        spikes.forEach(([at]) => {
+          if (p < at) return;
+          const px = X(at);
+          const py = Y(live(at));
+          ctx.fillStyle = 'rgba(0,108,255,0.18)';
+          dot(ctx, px, py, 13);
+          ctx.fillStyle = tone.dot;
+          dot(ctx, px, py, 5.5);
         });
       }
-      const tuneIn = toB * (1 - toC);
-      if (tuneIn > 0.01) {
-        ctx.fillStyle = `rgba(${BLUE},${tuneIn})`;
-        ctx.fillText('튜닝 후', X(1) + 10, Y(at(shapes[0], N - 1)));
-        ctx.fillStyle = `rgba(${INK},${tuneIn * 0.8})`;
-        ctx.fillText('튜닝 전', X(1) + 10, Y(at(shapes[1], N - 1)));
+      if (p > 0 && p < 1) {
+        ctx.fillStyle = tone.dot;
+        dot(ctx, X(p), Y(thread(p)), 5);
       }
-
-      // Anomalies: each signal lands, then drops a line to the decision it asks for.
-      dots.forEach((i, k) => {
-        const inn = smooth(span(t, 0.78 + k * 0.025, 0.85 + k * 0.025));
-        if (inn <= 0) return;
-        const px = X(i / (N - 1));
-        const py = Y(at(shapes[0], i));
-        const drop = smooth(span(t, 0.88 + k * 0.02, 0.95 + k * 0.02));
-        if (drop > 0) {
-          ctx.strokeStyle = `rgba(${BLUE},${0.8 * drop})`;
-          ctx.lineWidth = 1.5;
-          ctx.beginPath();
-          ctx.moveTo(px, py);
-          ctx.lineTo(px, lerp(py, Y(1), drop));
-          ctx.stroke();
-          ctx.fillStyle = `rgba(${BLUE},${drop})`;
-          ctx.textAlign = 'center';
-          ctx.fillText('검토', px, h - 10);
-          ctx.textAlign = 'left';
-        }
-        ctx.fillStyle = `rgba(${BLUE},${0.2 * inn})`;
-        ctx.beginPath();
-        ctx.arc(px, py, (phone ? 12 : 17) * inn, 0, 6.29);
-        ctx.fill();
-        ctx.fillStyle = `rgb(${BLUE})`;
-        ctx.beginPath();
-        ctx.arc(px, py, (phone ? 5 : 7) * inn, 0, 6.29);
-        ctx.fill();
-      });
-
-      if (reveal < 1 && reveal > 0) {
-        ctx.fillStyle = `rgb(${INK})`;
-        shapes.forEach((shape, k) => {
-          const i = Math.floor(last);
-          ctx.globalAlpha = k === 0 ? 1 : 0.5;
-          ctx.beginPath();
-          ctx.arc(X(i / (N - 1)), Y(at(shape, i)), 3.5, 0, 6.29);
-          ctx.fill();
-        });
-        ctx.globalAlpha = 1;
-      }
-
-      if (count) count.textContent = `${t < 0.34 ? 1 : t < 0.65 ? 2 : 3} / 3`;
     };
+    const drawAll = () => canvases.forEach((_, k) => draw(k));
+    const size = () => {
+      canvases.forEach((canvas, k) => { views[k] = fit(canvas); });
+      drawAll();
+    };
+    const setStack = (ps) => { ps.forEach((v, k) => { prog[k] = v; }); drawAll(); };
 
-    const resize = () => { view = fit(canvas); draw(); };
-    const mm = Stage.scene(root, {
-      hold: o.hold ?? 2.2,
-      scrub: Stage.lenis ? true : 0.3,
-      build(tl, { q }) {
-        const beats = q('.signal__beats li');
-        const reads = q('.signal__reads span');
-        s.t = 0;
-        tl.to(s, { t: 1, duration: 1, onUpdate: draw }, 0);
+    if (!window.ScrollTrigger || calm()) setStack([1, 1, 1]);
+    else {
+      const mm = gsap.matchMedia();
+      mm.add('(min-width: 1024px)', () => {
+        const strip = root.querySelector('.tool__strip');
+        // Starts part-drawn, so the strip never rises into view empty.
         ScrollTrigger.create({
-          trigger: root,
-          start: 'top bottom',
-          end: 'top top',
-          onUpdate: (self) => { s.enter = self.progress; draw(); },
+          trigger: strip,
+          start: 'top 92%',
+          end: 'top 12%',
+          scrub: true,
+          onUpdate: (self) => {
+            const t = lerp(0.12, 1, self.progress);
+            setStack([span(t, 0, 1 / 3), span(t, 1 / 3, 2 / 3), span(t, 2 / 3, 1)]);
+          },
+          onRefresh: (self) => {
+            const t = lerp(0.12, 1, self.progress);
+            setStack([span(t, 0, 1 / 3), span(t, 1 / 3, 2 / 3), span(t, 2 / 3, 1)]);
+          },
         });
-        [beats, reads].forEach(([one, two, three]) => {
-          tl.to(one, { autoAlpha: 0, y: -14, duration: 0.03, ease: 'power1.in' }, 0.32);
-          tl.fromTo(two, { autoAlpha: 0, y: 22 }, { autoAlpha: 1, y: 0, duration: 0.05, ease: 'power2.out' }, 0.355);
-          tl.to(two, { autoAlpha: 0, y: -14, duration: 0.03, ease: 'power1.in' }, 0.63);
-          tl.fromTo(three, { autoAlpha: 0, y: 22 }, { autoAlpha: 1, y: 0, duration: 0.05, ease: 'power2.out' }, 0.665);
+      });
+      mm.add('(max-width: 1023px)', () => {
+        canvases.forEach((canvas, k) => {
+          const run = (self) => { prog[k] = lerp(0.1, 1, self.progress); draw(k); };
+          ScrollTrigger.create({ trigger: canvas, start: 'top 88%', end: 'bottom 55%', scrub: true, onUpdate: run, onRefresh: run });
         });
-        resize();
-      },
-      rest() {
-        s.t = 1;
-        s.enter = 1;
-        resize();
-      },
-    });
-    if (window.ScrollTrigger) ScrollTrigger.addEventListener('refresh', resize);
-    else { s.t = 1; s.enter = 1; resize(); }
-    if (document.fonts) document.fonts.ready.then(draw);
-    return mm;
+      });
+    }
+    size();
+    new ResizeObserver(size).observe(root.querySelector('.tool__strip'));
   };
 
   /* Segmented controls share one behaviour: the thumb follows the pressed button. */
@@ -1402,8 +1322,7 @@
     const canvas = root.querySelector('.rec__dots');
     const say = root.querySelector('.rec__say');
     const sayTitle = say.querySelector('.rec__say-title');
-    const [sayWho, sayDate] = say.querySelectorAll('.rec__say-meta span');
-    const sayDesc = say.querySelector('.rec__say-desc');
+    const sayDate = say.querySelector('.rec__say-meta span');
     const segment = root.querySelector('.segment');
     const wideQuery = matchMedia('(min-width: 1024px) and (hover: hover) and (pointer: fine)');
     const still = calm();
@@ -1639,9 +1558,7 @@
     };
     const tell = () => {
       sayTitle.textContent = chosen.querySelector('.rec__title').textContent;
-      sayWho.textContent = chosen.querySelector('.rec__who').textContent;
       sayDate.textContent = chosen.querySelector('.rec__date').textContent;
-      sayDesc.innerHTML = chosen.querySelector('.rec__desc').innerHTML;
       if (!still && say.animate) {
         say.animate([{ opacity: 0, transform: 'translateY(10px)' }, { opacity: 1, transform: 'none' }], { duration: 380, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' });
       }
@@ -1652,7 +1569,7 @@
       chosen = row;
       chosen.classList.add('is-on');
       rows.forEach((r) => {
-        if (wide) r.querySelector('.rec__row').setAttribute('aria-pressed', String(r === chosen));
+        if (wide) r.querySelector('.rec__row').setAttribute('aria-current', String(r === chosen));
       });
       say.setAttribute('aria-live', byUser ? 'polite' : 'off');
       tell();
@@ -1664,13 +1581,13 @@
       rows.forEach((r) => {
         const head = r.querySelector('.rec__row');
         if (wide) {
-          head.setAttribute('role', 'button');
+          head.setAttribute('role', 'group');
           head.tabIndex = 0;
-          head.setAttribute('aria-pressed', String(r === chosen));
+          head.setAttribute('aria-current', String(r === chosen));
         } else {
           head.removeAttribute('role');
           head.removeAttribute('tabindex');
-          head.removeAttribute('aria-pressed');
+          head.removeAttribute('aria-current');
         }
       });
       dwell = null;
@@ -1815,7 +1732,7 @@
       choose(row, true);
     });
     wrap.addEventListener('keydown', (e) => {
-      if (!wide) return;
+      if (!wide || e.target.closest('a')) return;
       const row = e.target.closest('.rec');
       if (!row) return;
       const list = shown();
@@ -2045,6 +1962,7 @@
   Stage.smooth();
   Stage.init();
   quiet();
+  tool();
   lab();
   flow();
   record();

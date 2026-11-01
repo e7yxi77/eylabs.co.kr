@@ -33,6 +33,7 @@
     <section class="scene opening" id="top" data-scene="opening" data-options='{"hold":1.9}' aria-labelledby="title">
       <div class="scene-stage">
         <canvas class="strands" aria-hidden="true"></canvas>
+        <i class="opening__room" aria-hidden="true"></i>
         <h1 class="display lines opening__title" id="title">
           <span class="line opening__first"><span data-line style="--i:0">불편에서</span></span>
           <span class="line opening__second"><span data-line style="--i:1">사업까지</span></span>
@@ -67,26 +68,37 @@
       <p class="display pushed__line">모델 검토 실험 파인튜닝 이상 신호 의사결정</p>
     </section>
 
-    <section class="scene signal" id="tool" data-scene="signal" data-options='{"hold":2.2}' aria-labelledby="h-tool">
-      <div class="scene-stage">
-        <h2 class="head" id="h-tool">AI를 실질적인 도구로 적용합니다</h2>
-        <div class="signal__chart" data-ui>
-          <canvas aria-hidden="true"></canvas>
-          <div class="signal__reads lead" aria-hidden="true">
-            <span>후보 6개</span>
-            <span>오차 0.25 → 0.09</span>
-            <span>신호 3건</span>
-          </div>
-        </div>
-        <div class="signal__foot">
-          <ol class="signal__beats lead">
-            <li>새로운 모델과 도구를 검토합니다.</li>
-            <li>필요한 경우 직접 실험과 파인튜닝을 수행합니다.</li>
-            <li>데이터에서 패턴과 이상 신호를 찾아 실제 의사결정으로 잇습니다.</li>
-          </ol>
-          <p class="small signal__note"><span class="signal__count" aria-hidden="true">1 / 3</span> 설명을 위한 예시 데이터입니다.</p>
-        </div>
+    <section class="tool" id="tool" aria-labelledby="h-tool">
+      <div class="tool__top">
+        <h2 class="head" id="h-tool" data-lines>AI를 실질적인 도구로 적용합니다</h2>
+        <p class="small tool__note">설명을 위한 예시 데이터입니다.</p>
       </div>
+      <ol class="tool__strip">
+        <li class="tool__step tool__step--ink">
+          <h3 class="tool__verb">검토</h3>
+          <div class="tool__plot"><canvas data-step="0" aria-hidden="true"></canvas></div>
+          <div class="tool__say">
+            <p class="tool__read">후보 6개</p>
+            <p class="lead">새로운 모델과 도구를 검토합니다.</p>
+          </div>
+        </li>
+        <li class="tool__step tool__step--blue">
+          <h3 class="tool__verb">실험</h3>
+          <div class="tool__plot"><canvas data-step="1" aria-hidden="true"></canvas></div>
+          <div class="tool__say">
+            <p class="tool__read">오차 0.25 → 0.09</p>
+            <p class="lead">필요한 경우 직접 실험과 파인튜닝을 수행합니다.</p>
+          </div>
+        </li>
+        <li class="tool__step tool__step--pale">
+          <h3 class="tool__verb">판단</h3>
+          <div class="tool__plot"><canvas data-step="2" aria-hidden="true"></canvas></div>
+          <div class="tool__say">
+            <p class="tool__read">신호 3건</p>
+            <p class="lead">데이터에서 패턴과 이상 신호를 찾아 실제 의사결정으로 잇습니다.</p>
+          </div>
+        </li>
+      </ol>
     </section>
 
     <section class="lab" id="lab" aria-labelledby="h-lab">
@@ -187,155 +199,141 @@
         <li class="rec" data-kind="award" data-led="1등">
           <div class="rec__clip"><div class="rec__row" data-reveal>
             <span class="rec__date">2026.10.31</span>
-            <span class="rec__who">김은율</span>
             <div class="rec__name">
               <h3 class="rec__title">THE해커톤 : DREAMERS</h3>
               <p class="rec__result">1등 우승</p>
+              <div class="rec__desc"><p>코딩과 AI 비즈니스 아이디어로 불편한 점을 해소하는 대회에서 눈길로 1등 우승했습니다.</p> <a href="https://www.lud.works/events/the-hackathon-dreamers-2026" target="_blank" rel="noopener">행사 페이지</a></div>
             </div>
-            <div class="rec__desc"><p>코딩과 AI 비즈니스 아이디어로 불편한 점을 해소하는 대회에서 눈길로 1등 우승했습니다.</p> <a href="https://www.lud.works/events/the-hackathon-dreamers-2026" target="_blank" rel="noopener">행사 페이지</a></div>
-          </div></div>
-        </li>
-        <li class="rec" data-kind="award" data-led="HIR">
-          <div class="rec__clip"><div class="rec__row" data-reveal>
-            <span class="rec__date">2026.07</span>
-            <span class="rec__who">윤준혁</span>
-            <div class="rec__name">
-              <h3 class="rec__title">Harvard International Review</h3>
-              <p class="rec__result">Writing Contest 2026, Outstanding Writer Award</p>
-            </div>
-            <div class="rec__desc"><p>디지털 시대의 글로벌 문화(Global Culture in the Digital Era)를 주제로 글을 써 Outstanding Writer Award를 받았습니다.</p></div>
-          </div></div>
-        </li>
-        <li class="rec" data-kind="award" data-led="BWKI">
-          <div class="rec__clip"><div class="rec__row" data-reveal>
-            <span class="rec__date">2026.06 – 2026.10</span>
-            <span class="rec__who">김은율</span>
-            <div class="rec__name">
-              <h3 class="rec__title">BWKI</h3>
-              <p class="rec__result">독일 연방 AI 경진대회</p>
-            </div>
-            <div class="rec__desc"><p>독일 연방 AI 경진대회(Bundeswettbewerb Künstliche Intelligenz)에서 AI 활용 서비스 개발을 진행했습니다.</p> <a href="https://www.bw-ki.de/" target="_blank" rel="noopener">BWKI 사이트</a></div>
-          </div></div>
-        </li>
-        <li class="rec" data-kind="award" data-shape="stars">
-          <div class="rec__clip"><div class="rec__row" data-reveal>
-            <span class="rec__date">2026.03</span>
-            <span class="rec__who">윤준혁</span>
-            <div class="rec__name">
-              <h3 class="rec__title">Blue Ocean Competition</h3>
-              <p class="rec__result">23,000명 이상 중 Top 150</p>
-            </div>
-            <div class="rec__desc"><p>전 세계 23,000명 이상의 참가자 가운데 Top 150에 들었고, 해파리 유래 바이오 소재 벤처 Taragen을 발표했습니다. 점 가운데 밝은 점의 비율이 23,000명 중 150명입니다.</p></div>
-          </div></div>
-        </li>
-        <li class="rec" data-kind="award" data-led="GOLD">
-          <div class="rec__clip"><div class="rec__row" data-reveal>
-            <span class="rec__date">2026.03</span>
-            <span class="rec__who">윤준혁</span>
-            <div class="rec__name">
-              <h3 class="rec__title">National Latin Exam</h3>
-              <p class="rec__result">Gold Summa Cum Laude, 상위 5%</p>
-            </div>
-            <div class="rec__desc"><p>Beginning Latin Reading Comprehension 시험에서 상위 5%에 해당하는 Gold Summa Cum Laude를 받았습니다.</p></div>
-          </div></div>
-        </li>
-        <li class="rec" data-kind="award" data-led="AWARD">
-          <div class="rec__clip"><div class="rec__row" data-reveal>
-            <span class="rec__date">2026.01</span>
-            <span class="rec__who">윤준혁</span>
-            <div class="rec__name">
-              <h3 class="rec__title">Immerse Education</h3>
-              <p class="rec__result">Essay Competition 2026, Scholarship Award</p>
-            </div>
-            <div class="rec__desc"><p>국제관계에서 한국의 소프트파워 전략을 분석한 에세이로 Scholarship Award를 받았습니다.</p></div>
           </div></div>
         </li>
         <li class="rec" data-kind="service" data-shape="eye">
           <div class="rec__clip"><div class="rec__row" data-reveal>
             <span class="rec__date">2026.10.31</span>
-            <span class="rec__who">이와이렙스</span>
             <div class="rec__name">
               <h3 class="rec__title">눈길</h3>
               <p class="rec__result">THE해커톤 : DREAMERS 우승 프로젝트</p>
+              <div class="rec__desc"><p>시선과 머리 움직임, 목소리, AI로 브라우저를 제어하는 크롬 확장 프로그램입니다. OpenAI, (주)루드다이나믹스, (주)조코딩에이엑스파트너스의 지원을 받았습니다.</p> <a href="https://nungil.the-hackathon-dreamers.axhub.page/" target="_blank" rel="noopener">눈길 사이트</a></div>
             </div>
-            <div class="rec__desc"><p>시선과 머리 움직임, 목소리, AI로 브라우저를 제어하는 크롬 확장 프로그램입니다. 손을 쓰지 않고 웹을 쓸 수 있게 합니다. OpenAI, (주)루드다이나믹스, (주)조코딩에이엑스파트너스의 지원을 받았습니다.</p> <a href="https://nungil.the-hackathon-dreamers.axhub.page/" target="_blank" rel="noopener">눈길 사이트</a></div>
+          </div></div>
+        </li>
+        <li class="rec" data-kind="award" data-led="HIR">
+          <div class="rec__clip"><div class="rec__row" data-reveal>
+            <span class="rec__date">2026.07</span>
+            <div class="rec__name">
+              <h3 class="rec__title">Harvard International Review</h3>
+              <p class="rec__result">Writing Contest 2026, Outstanding Writer Award</p>
+              <div class="rec__desc"><p>디지털 시대의 글로벌 문화(Global Culture in the Digital Era)를 주제로 글을 써 Outstanding Writer Award를 받았습니다.</p></div>
+            </div>
+          </div></div>
+        </li>
+        <li class="rec" data-kind="award" data-led="BWKI">
+          <div class="rec__clip"><div class="rec__row" data-reveal>
+            <span class="rec__date">2026.06 – 2026.10</span>
+            <div class="rec__name">
+              <h3 class="rec__title">BWKI</h3>
+              <p class="rec__result">독일 연방 AI 경진대회</p>
+              <div class="rec__desc"><p>독일 연방 AI 경진대회(Bundeswettbewerb Künstliche Intelligenz)에서 AI 활용 서비스 개발을 진행했습니다.</p> <a href="https://www.bw-ki.de/" target="_blank" rel="noopener">BWKI 사이트</a></div>
+            </div>
           </div></div>
         </li>
         <li class="rec" data-kind="service" data-shape="tiles">
           <div class="rec__clip"><div class="rec__row" data-reveal>
             <span class="rec__date">2026.03 – 2026.11</span>
-            <span class="rec__who">이와이렙스</span>
             <div class="rec__name">
               <h3 class="rec__title">DSSI DASHBOARD</h3>
               <p class="rec__result">서울독일학교 정식 출시</p>
+              <div class="rec__desc"><p>학교 구성원이 주요 정보를 한곳에서 확인하는 통합 대시보드입니다.</p> <a href="https://dssi.kr/" target="_blank" rel="noopener">DSSI DASHBOARD 사이트</a></div>
             </div>
-            <div class="rec__desc"><p>학교 구성원이 주요 정보를 한곳에서 확인하는 통합 대시보드입니다.</p> <a href="https://dssi.kr/" target="_blank" rel="noopener">DSSI DASHBOARD 사이트</a></div>
-          </div></div>
-        </li>
-        <li class="rec" data-kind="service" data-led="HANFLOW">
-          <div class="rec__clip"><div class="rec__row" data-reveal>
-            <span class="rec__date">2026.01 – 현재</span>
-            <span class="rec__who">이와이렙스</span>
-            <div class="rec__name">
-              <h3 class="rec__title">HANFLOW 한플로우</h3>
-              <p class="rec__result">운영 중</p>
-            </div>
-            <div class="rec__desc"><p>실시간 지수, 수급 동향, 당일 주도주, AI 시황 요약을 한 화면에 모은 장중 통합 대시보드입니다. 매매를 대행하지 않으며 투자 판단에 필요한 정보 환경을 제공합니다.</p> <a href="https://about.hanflow.org/" target="_blank" rel="noopener">서비스 소개</a></div>
           </div></div>
         </li>
         <li class="rec" data-kind="path" data-led="CLUB">
           <div class="rec__clip"><div class="rec__row" data-reveal>
             <span class="rec__date">서울독일학교</span>
-            <span class="rec__who">윤준혁</span>
             <div class="rec__name">
               <h3 class="rec__title">Digital Dashboard Club</h3>
               <p class="rec__result">창립자 겸 리더</p>
+              <div class="rec__desc"><p>학교 소식, 일정, 과제, 행사를 한곳에 모은 통합 대시보드를 개발했습니다.</p></div>
             </div>
-            <div class="rec__desc"><p>학교 소식, 일정, 과제, 행사를 한곳에 모은 통합 대시보드를 개발했습니다.</p></div>
+          </div></div>
+        </li>
+        <li class="rec" data-kind="award" data-shape="stars">
+          <div class="rec__clip"><div class="rec__row" data-reveal>
+            <span class="rec__date">2026.03</span>
+            <div class="rec__name">
+              <h3 class="rec__title">Blue Ocean Competition</h3>
+              <p class="rec__result">23,000명 이상 중 Top 150</p>
+              <div class="rec__desc"><p>전 세계 23,000명 이상의 참가자 가운데 Top 150에 들었고, 해파리 유래 바이오 소재 벤처 Taragen을 발표했습니다.</p></div>
+            </div>
+          </div></div>
+        </li>
+        <li class="rec" data-kind="award" data-led="GOLD">
+          <div class="rec__clip"><div class="rec__row" data-reveal>
+            <span class="rec__date">2026.03</span>
+            <div class="rec__name">
+              <h3 class="rec__title">National Latin Exam</h3>
+              <p class="rec__result">Gold Summa Cum Laude, 상위 5%</p>
+              <div class="rec__desc"><p>Beginning Latin Reading Comprehension 시험에서 상위 5%에 해당하는 Gold Summa Cum Laude를 받았습니다.</p></div>
+            </div>
+          </div></div>
+        </li>
+        <li class="rec" data-kind="service" data-led="HANFLOW">
+          <div class="rec__clip"><div class="rec__row" data-reveal>
+            <span class="rec__date">2026.01 – 현재</span>
+            <div class="rec__name">
+              <h3 class="rec__title">HANFLOW 한플로우</h3>
+              <p class="rec__result">운영 중</p>
+              <div class="rec__desc"><p>실시간 지수, 수급 동향, 당일 주도주, AI 시황 요약을 한 화면에 모은 장중 통합 대시보드입니다. 매매를 대행하지 않습니다.</p> <a href="https://about.hanflow.org/" target="_blank" rel="noopener">서비스 소개</a></div>
+            </div>
+          </div></div>
+        </li>
+        <li class="rec" data-kind="award" data-led="AWARD">
+          <div class="rec__clip"><div class="rec__row" data-reveal>
+            <span class="rec__date">2026.01</span>
+            <div class="rec__name">
+              <h3 class="rec__title">Immerse Education</h3>
+              <p class="rec__result">Essay Competition 2026, Scholarship Award</p>
+              <div class="rec__desc"><p>국제관계에서 한국의 소프트파워 전략을 분석한 에세이로 Scholarship Award를 받았습니다.</p></div>
+            </div>
           </div></div>
         </li>
         <li class="rec" data-kind="path" data-led="인턴">
           <div class="rec__clip"><div class="rec__row" data-reveal>
             <span class="rec__date">2025.12 – 2026.01</span>
-            <span class="rec__who">김은율</span>
             <div class="rec__name">
               <h3 class="rec__title">고려신용정보 IT혁신단</h3>
               <p class="rec__result">인턴십</p>
+              <div class="rec__desc"><p>신용정보 전문 기업의 IT혁신단 인턴십에서 IT 업무 흐름과 실무 협업을 경험했습니다.</p></div>
             </div>
-            <div class="rec__desc"><p>신용정보 전문 기업의 IT혁신단 인턴십에서 IT 업무 흐름과 실무 협업을 경험했습니다.</p></div>
           </div></div>
         </li>
         <li class="rec" data-kind="path" data-led="PRESS">
           <div class="rec__clip"><div class="rec__row" data-reveal>
             <span class="rec__date">2025.10 – 현재</span>
-            <span class="rec__who">윤준혁</span>
             <div class="rec__name">
               <h3 class="rec__title">The Thompson Tribune</h3>
               <p class="rec__result">학생 기자</p>
+              <div class="rec__desc"><p>학생이 운영하는 온라인 신문에서 세계 뉴스와 기술을 보도합니다.</p></div>
             </div>
-            <div class="rec__desc"><p>학생이 운영하는 온라인 신문에서 세계 뉴스와 기술을 보도합니다.</p></div>
-          </div></div>
-        </li>
-        <li class="rec" data-kind="path" data-shape="lock">
-          <div class="rec__clip"><div class="rec__row" data-reveal>
-            <span class="rec__date">2024.09 – 2025.09</span>
-            <span class="rec__who">김은율</span>
-            <div class="rec__name">
-              <h3 class="rec__title">보안 연구와 자격</h3>
-              <p class="rec__result">해킹보안전문가(민간) 취득</p>
-            </div>
-            <div class="rec__desc"><p>웹 캐시 포이즈닝과 프로토타입 오염을 연구하고, GraphQL 보안 점검 도구와 리눅스 권한 상승, Docker 컨테이너 탈출 실습 환경을 만들었습니다.</p></div>
           </div></div>
         </li>
         <li class="rec" data-kind="path" data-shape="heart">
           <div class="rec__clip"><div class="rec__row" data-reveal>
             <span class="rec__date">2024.09 – 현재</span>
-            <span class="rec__who">윤준혁</span>
             <div class="rec__name">
               <h3 class="rec__title">Dream Love School</h3>
               <p class="rec__result">자원봉사 강사</p>
+              <div class="rec__desc"><p>소아암 환자를 위한 온라인 영어 수업을 진행하고 학습 자료를 만듭니다.</p></div>
             </div>
-            <div class="rec__desc"><p>소아암 환자를 위한 온라인 영어 수업을 진행하고 학습 자료를 만듭니다.</p></div>
+          </div></div>
+        </li>
+        <li class="rec" data-kind="path" data-shape="lock">
+          <div class="rec__clip"><div class="rec__row" data-reveal>
+            <span class="rec__date">2024.09 – 2025.09</span>
+            <div class="rec__name">
+              <h3 class="rec__title">보안 연구와 자격</h3>
+              <p class="rec__result">해킹보안전문가(민간) 취득</p>
+              <div class="rec__desc"><p>웹 캐시 포이즈닝과 프로토타입 오염을 연구하고, GraphQL 보안 점검 도구와 권한 상승·컨테이너 탈출 실습 환경을 만들었습니다.</p></div>
+            </div>
           </div></div>
         </li>
           </ol>
@@ -345,8 +343,7 @@
           <canvas class="rec__dots" aria-hidden="true"></canvas>
           <div class="rec__say" aria-live="off">
             <p class="lead rec__say-title"></p>
-            <p class="rec__say-meta"><span></span> <span></span></p>
-            <div class="rec__say-desc"></div>
+            <p class="rec__say-meta"><span></span></p>
           </div>
         </aside>
       </div>
@@ -362,8 +359,6 @@
         <li data-reveal style="--d:70ms"><a href="mailto:contact@eylabs.co.kr"><span>일반 문의</span><b>contact@eylabs.co.kr</b></a></li>
         <li data-reveal style="--d:140ms"><a href="mailto:jh.youn.2028@gmail.com"><span>CTO 윤준혁</span><b>jh.youn.2028@gmail.com</b></a></li>
         <li data-reveal style="--d:210ms"><a href="tel:050268209422"><span>대표번호</span><b>050-2682-09422</b><small>0번을 누르면 통화 가능</small></a></li>
-        <li data-reveal style="--d:280ms"><a href="tel:+821062522184"><span>대표 김은율</span><b>010-6252-2184</b></a></li>
-        <li data-reveal style="--d:350ms"><a href="tel:+821088818072"><span>CTO 윤준혁</span><b>010-8881-8072</b></a></li>
       </ul>
     </div>
   </section>
