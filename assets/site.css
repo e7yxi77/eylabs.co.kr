@@ -12,12 +12,13 @@
 
   --font-text: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
 
-  --display: min(11.4vw, 23svh);
+  --display: min(calc((100vw - 2 * var(--margin)) / 10), 15.5svh);
   --step-small: clamp(0.8125rem, 0.79rem + 0.1vw, 0.875rem);
   --step-body: clamp(1.0625rem, 1rem + 0.25vw, 1.1875rem);
   --step-lead: clamp(1.25rem, 0.95rem + 1.1vw, 1.875rem);
   --step-row: clamp(1.1875rem, 0.9rem + 0.9vw, 1.625rem);
-  --step-head: clamp(2.125rem, 1rem + 4.6vw, 5rem);
+  --step-name: clamp(1.625rem, 1rem + 2.6vw, 3.25rem);
+  --step-head: clamp(1.75rem, 0.75rem + 5vw, 5rem);
 
   --margin: clamp(16px, 2.2vw, 32px);
   --gutter: clamp(12px, 1.6vw, 24px);
@@ -33,7 +34,7 @@
 }
 
 *, *::before, *::after { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; scroll-padding-top: var(--nav); scroll-behavior: smooth; }
+html { -webkit-text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; scroll-padding-top: var(--nav); scroll-behavior: smooth; }
 html.is-smooth { scroll-behavior: auto; }
 body {
   margin: 0;
@@ -52,6 +53,22 @@ canvas { display: block; }
 a { color: inherit; }
 button { font: inherit; }
 :focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+::selection { background: var(--accent); color: var(--accent-ink); }
+
+.skip {
+  position: fixed;
+  top: 8px;
+  left: var(--margin);
+  z-index: 20;
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--bg);
+  font-weight: 600;
+  text-decoration: none;
+  transform: translateY(-200%);
+}
+.skip:focus { transform: none; }
 
 .display { font-size: var(--display); font-weight: 600; line-height: 0.98; letter-spacing: -0.06em; }
 .head { font-size: var(--step-head); font-weight: 600; line-height: 1.1; letter-spacing: -0.04em; text-wrap: balance; }
@@ -72,6 +89,7 @@ button { font: inherit; }
   text-decoration: none;
   white-space: nowrap;
   cursor: pointer;
+  touch-action: manipulation;
   transition: transform var(--t-press) var(--ease-out), background-color var(--t-hover) ease;
 }
 .button:active { transform: scale(0.97); }
@@ -92,22 +110,26 @@ button { font: inherit; }
   gap: clamp(16px, 3vw, 40px);
   height: var(--nav);
   padding-inline: var(--margin);
-  background: var(--bg);
+  background: var(--nav-ground, var(--bg));
   color: var(--ink);
   transition: transform 300ms var(--ease-out), background-color 300ms ease, color 300ms ease;
 }
 .nav.is-away { transform: translateY(-100%); }
-.nav[data-tone="dark"], .nav.on-dark { background: var(--field-1); color: var(--field-1-ink); }
+.nav[data-tone="dark"] { --nav-ground: var(--field-1); color: var(--field-1-ink); }
+.nav[data-tone="dark"] .button--quiet { background: #2a2a2a; color: var(--field-1-ink); }
+.nav[data-tone="dark"] :focus-visible { outline-color: var(--signal); }
+.nav[data-tone="accent"] :focus-visible { outline-color: #ffffff; }
 .logo { --logo-ink: var(--ink); --logo-blue: var(--accent); display: block; width: auto; }
-.nav[data-tone="accent"] { background: var(--accent); color: var(--accent-ink); }
+.nav[data-tone="accent"] { --nav-ground: var(--accent); color: var(--accent-ink); }
 .nav[data-tone="accent"] .button { background: var(--accent-ink); color: var(--accent); }
 .nav[data-tone="accent"] .logo { --logo-ink: #ffffff; --logo-blue: #ffffff; }
 .nav__mark { margin-right: auto; }
 .logo--line { height: 26px; transition: transform var(--t-press) var(--ease-out); }
 .nav__mark:active .logo { transform: scale(0.97); }
-.nav[data-tone="dark"] .logo, .nav.on-dark .logo { --logo-ink: #ffffff; }
+.nav[data-tone="dark"] .logo { --logo-ink: #ffffff; }
 .nav__links { display: flex; gap: clamp(16px, 2.4vw, 32px); font-size: 0.9375rem; font-weight: 500; }
 .nav__links a {
+  white-space: nowrap;
   text-decoration: underline;
   text-decoration-color: transparent;
   text-underline-offset: 0.3em;
@@ -115,79 +137,82 @@ button { font: inherit; }
   transition: text-decoration-color var(--t-hover) ease;
 }
 .nav__links a:hover { text-decoration-color: currentColor; }
+/* On a phone the links fold into a plain disclosure, which also works with no script. */
+.nav__menu { display: none; }
+.nav__menu summary { list-style: none; user-select: none; }
+.nav__menu summary::-webkit-details-marker { display: none; }
+.nav__menu nav { position: absolute; inset: 100% 0 auto; display: grid; padding: 4px var(--margin) 16px; background: var(--nav-ground, var(--bg)); }
+.nav__menu a { display: flex; align-items: center; min-height: 48px; font-size: var(--step-lead); font-weight: 500; letter-spacing: -0.025em; text-decoration: none; }
 
 /* Masked lines */
 .lines .line { display: block; overflow: clip; overflow-clip-margin: 0.04em; }
 .lines [data-line] { display: block; }
 
-/* Opening. Finished composition first: the sentence, the tangle, the claim. */
-.opening { --type: min(calc((100vw - 2 * var(--margin) - 18px) / 6.6), 30svh); }
-.opening .scene-stage { padding: calc(var(--nav) + 24px) var(--margin) 0; }
-.opening__room { display: none; }
-.strands { display: none; }
-html.js .strands { display: block; width: 100%; height: 34svh; margin-block: 12px; }
-.opening__say { display: flex; flex-direction: column; align-items: flex-start; gap: clamp(12px, 1.4vw, 20px); max-width: 36rem; margin-top: clamp(16px, 2vw, 28px); }
-.opening__end { padding-block: var(--gap); }
-
-/* Opening, live: the stage holds still while the tangle comes undone and the lines close over the page. */
-html.js .opening:not(.is-rest) .scene-stage { position: relative; height: 100svh; overflow: clip; padding: 0; background: var(--bg); }
-html.js .opening.is-live .scene-stage { position: sticky; }
-html.js .opening:not(.is-rest) .strands { position: absolute; inset: 0; height: 100%; margin: 0; touch-action: pan-y; }
-html.js .opening:not(.is-rest) .opening__title {
-  position: absolute;
-  z-index: 2;
-  /* The offsets cancel the glyphs' side bearings, so the ink itself meets the margins the logo and buttons sit on. */
-  inset: calc(var(--nav) + clamp(8px, 2.4svh, 28px)) calc(var(--margin) - 0.041em) auto calc(var(--margin) - 0.03em);
+/* Opening: the question, who is answering it, and one line with one loop in it. */
+.opening {
+  --type: min(7.6vw, 12.5svh);
+  position: relative;
   display: flex;
-  justify-content: space-between;
-  font-size: var(--type);
-  font-weight: 540;
+  flex-direction: column;
+  align-items: flex-start;
+  min-height: 100svh;
+  overflow: clip;
+  padding: calc(var(--nav) + clamp(20px, 4.4svh, 48px)) var(--margin) clamp(88px, 13svh, 128px);
 }
-/* What the type and the foot leave free. The knot is sized to it, measured here so scroll transforms cannot move it. */
-html.js .opening:not(.is-rest) .opening__room {
-  position: absolute;
-  display: block;
-  inset: calc(var(--nav) + clamp(8px, 2.4svh, 28px) + var(--type) * 0.98) 0 calc(clamp(20px, 3.2svh, 36px) + var(--say-h, 84px));
-  visibility: hidden;
-}
-html.js .opening:not(.is-rest) .opening__say {
-  position: absolute;
-  z-index: 3;
-  inset: auto var(--margin) clamp(20px, 3.2svh, 36px);
-  flex-direction: row;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: var(--gutter);
-  margin: 0;
-  max-width: none;
-}
-html.js .opening:not(.is-rest) .opening__say .lead { max-width: min(36rem, 44vw); }
-html.js .opening:not(.is-rest) .opening__end {
-  position: absolute;
-  z-index: 4;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  padding: 0 var(--margin);
-  pointer-events: none;
-}
-html.js .opening:not(.is-rest) .opening__claim { color: var(--field-1-ink); opacity: 0; }
+/* The negative margin cancels the first glyph's side bearing, so its ink meets the margin the logo sits on. */
+.opening__title { position: relative; z-index: 1; margin-left: -0.027em; font-size: var(--type); line-height: 1.08; letter-spacing: -0.05em; }
+.opening__say { position: relative; z-index: 1; display: grid; justify-items: start; gap: clamp(12px, 1.4vw, 20px); max-width: min(44rem, 50vw); margin-top: clamp(20px, 3.6svh, 40px); }
+.opening__say .lead { text-wrap: pretty; }
+.opening__pain { font-weight: 500; line-height: 1.5; letter-spacing: -0.01em; text-wrap: pretty; }
+.opening__act { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.thread { display: none; }
+html.js .thread { display: block; position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.thread path { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linecap: round; stroke-dasharray: 1; }
 
 @media (prefers-reduced-motion: no-preference) {
   html.js .opening [data-line] { transform: translateY(105%); animation: load-line 900ms var(--ease-expo) forwards; animation-delay: calc(80ms + var(--i) * var(--stagger-line)); }
   html.js .opening [data-load] { opacity: 0; transform: translateY(12px); animation: load-rise 500ms var(--ease-out) forwards; animation-delay: var(--d); }
+  html.js .thread path { animation: draw-thread 1700ms cubic-bezier(0.65, 0, 0.35, 1) 240ms both; }
 }
+@keyframes draw-thread { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
 @keyframes load-line { to { transform: none; } }
 @keyframes load-rise { to { opacity: 1; transform: none; } }
 
+/* Why: an everyday problem runs along a line that straightens out into the way it gets solved. */
+.why { padding: clamp(64px, 8vw, 120px) var(--margin) var(--gap); background: var(--field-1); color: var(--field-1-ink); }
+.why__top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 12px var(--gutter); }
+.why__note { color: #b4b4b4; }
+.why__list { display: grid; gap: clamp(32px, 4.4vw, 64px); margin-top: clamp(40px, 5.6vw, 88px); }
+.why__row { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 3fr) minmax(0, 5fr); gap: 12px var(--gutter); align-items: start; }
+.why__pain, .why__fix { font-size: var(--step-lead); font-weight: 600; line-height: 1.3; letter-spacing: -0.025em; margin: 0 0 6px; text-wrap: balance; }
+.why__fix { color: var(--signal); }
+.why__line { position: relative; height: 40px; margin-top: calc(var(--step-lead) * 0.65 - 20px); color: var(--signal); }
+.why__line svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.why__line path { fill: none; stroke: currentColor; stroke-width: 2; vector-effect: non-scaling-stroke; }
+.why__line::after { content: ""; position: absolute; top: 50%; right: -5px; width: 10px; height: 10px; margin-top: -5px; border-radius: 50%; background: currentColor; }
+
+/* What: the four lines of work, named large, each with what it covers and where to see it. */
+.what { padding: var(--gap) var(--margin) clamp(48px, 6vw, 96px); }
+.what__list { display: grid; gap: clamp(40px, 5.6vw, 88px); margin-top: clamp(40px, 5.6vw, 88px); }
+.what__row { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 16px var(--gutter); align-items: start; }
+.what__name { margin: 0; font-size: var(--step-name); font-weight: 600; line-height: 1.1; letter-spacing: -0.035em; text-wrap: balance; }
+.what__say { display: grid; gap: clamp(12px, 1.4vw, 20px); }
+.what__items { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px var(--gutter); font-weight: 500; line-height: 1.45; }
+.what__more { display: flex; flex-wrap: wrap; gap: 4px 20px; }
+.what__more a { font-weight: 600; color: var(--accent-strong); text-underline-offset: 0.2em; text-decoration-thickness: 2px; }
+
 /* Path: one line changes from a tangle into a plan, a made thing, and a rising business. */
 .path { background: var(--field-1); color: var(--field-1-ink); }
+.path :focus-visible { outline-color: var(--signal); }
 .path .scene-stage { padding: clamp(64px, 9vw, 120px) var(--margin); }
 .path canvas { display: none; }
 html.js .path canvas { display: block; width: 100%; height: clamp(320px, 60svh, 640px); margin-bottom: 32px; touch-action: pan-y; cursor: grab; }
 html.js .path canvas.is-held { cursor: grabbing; }
-.nb { white-space: nowrap; }
-.path__beats { display: grid; gap: 0.5em; }
+.path__stack { display: grid; gap: clamp(24px, 3vw, 40px); }
+.path__beats { display: grid; gap: clamp(16px, 2vw, 28px); }
+.path__beats h3 { margin: 0; }
+.path__beats .lead { margin-top: 4px; }
+.path__end { max-width: 18em; font-size: var(--step-name); font-weight: 600; line-height: 1.15; letter-spacing: -0.035em; text-wrap: balance; }
 .path__note { margin-top: clamp(16px, 2vw, 28px); }
 .path__count { display: none; font-variant-numeric: tabular-nums; margin-right: 1em; }
 
@@ -200,15 +225,17 @@ html.js .path.is-live canvas { position: absolute; inset: 0; height: 100%; margi
   width: min(56%, 54rem);
   pointer-events: none;
 }
-.path.is-live .path__beats { gap: 0; min-height: calc(var(--step-head) * 1.1 * 2); align-content: end; }
-.path.is-live .path__beats li { grid-area: 1 / 1; align-self: end; }
-.path__beats li:last-child { max-width: 28em; font-size: var(--step-lead); font-weight: 500; line-height: 1.4; letter-spacing: -0.025em; }
+.path.is-live .path__stack { gap: 0; min-height: calc(var(--step-head) * 1.1 * 2); }
+.path.is-live .path__stack > *, .path.is-live .path__beats li { grid-area: 1 / 1; align-self: end; }
+.path.is-live .path__beats { gap: 0; }
+/* The title may run wider than the copy column: at this beat the line is still a tangle up and to the right. */
+.path.is-live .path__title { width: max-content; max-width: calc(100vw - 2 * var(--margin)); font-size: var(--step-name); }
 .path.is-live .path__count { display: inline; }
 .path__note[aria-hidden="true"] { display: none; }
 .path.is-live .path__note[aria-hidden="true"] { display: block; }
 
 /* A line of type that the scroll pushes sideways. */
-.pushed { overflow: clip; padding-block: clamp(48px, 7vw, 104px) clamp(24px, 3vw, 48px); }
+.pushed { overflow: clip; padding-block: clamp(48px, 7vw, 104px); }
 .pushed__line { padding-inline: var(--margin); white-space: nowrap; width: max-content; color: #e6e6e6; will-change: transform; }
 /* The face's letters are built from overlapping parts, so the fill paints over the inner half of the stroke. */
 @supports (paint-order: stroke fill) {
@@ -229,8 +256,8 @@ html.js .path.is-live canvas { position: absolute; inset: 0; height: 100%; margi
 /* Absolute, so a canvas resized to its box can never push that box taller. */
 html.js .tool__plot { display: block; position: relative; min-height: 200px; margin-block: clamp(16px, 2vw, 28px); }
 .tool__plot canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
-.tool__say { display: grid; align-content: start; gap: 6px; min-height: 6.6em; padding-inline: var(--margin); }
-.tool__read { font-size: 0.9375rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.tool__say { display: grid; align-content: start; gap: 8px; min-height: 6.6em; padding-inline: var(--margin); }
+.tool__read { font-size: 1rem; font-weight: 600; font-variant-numeric: tabular-nums; }
 
 /* Segmented control */
 [data-ui].segment, [data-ui] .segment {
@@ -293,8 +320,10 @@ html.js .tool__plot { display: block; position: relative; min-height: 200px; mar
 [data-ui] .lab__empty { position: absolute; inset: 0; display: grid; place-items: center; font-size: var(--step-lead); font-weight: 500; pointer-events: none; }
 [data-ui] .lab__empty[hidden] { display: none; }
 [data-ui] .lab__panel { display: flex; flex-direction: column; gap: clamp(14px, 1.6vw, 22px); }
+[data-ui] .lab__field:focus-visible { outline-offset: -3px; }
 [data-ui] .lab__control { display: grid; gap: 6px; font-size: 0.9375rem; font-weight: 500; }
 [data-ui] .lab__control .segment { display: grid; }
+[data-ui] .lab__help { color: var(--muted); font-size: var(--step-small); font-weight: 400; line-height: 1.4; }
 [data-ui] .lab__stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--gutter); margin-top: 4px; }
 [data-ui] .lab__stats dt { font-size: 0.9375rem; font-weight: 500; }
 [data-ui] .lab__stats dd {
@@ -349,6 +378,26 @@ html.js .tool__plot { display: block; position: relative; min-height: 200px; mar
   line-height: 1.1;
 }
 
+/* Projects: what got built, each shown on the company's dot display, in the three fields the page already uses. */
+.projects { padding-top: var(--gap); }
+.projects > .head { padding-inline: var(--margin); }
+.projects__list { margin-top: clamp(32px, 4.4vw, 64px); }
+.project { display: grid; grid-template-columns: minmax(0, 1fr); }
+.project__view { display: none; }
+html.js .project__view { display: block; position: relative; min-height: clamp(240px, 40svh, 420px); }
+.project__view canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.project--ink .project__view { background: var(--field-1); }
+.project--blue .project__view { background: var(--accent); }
+.project--pale .project__view { background: var(--surface); }
+.project__body { display: grid; justify-items: start; gap: clamp(14px, 1.6vw, 22px); padding: clamp(24px, 3.4vw, 56px) var(--margin) clamp(40px, 5vw, 80px); }
+.project__name { margin: 0; font-size: var(--step-name); font-weight: 600; line-height: 1.1; letter-spacing: -0.035em; }
+.project__meta { margin-top: calc(clamp(14px, 1.6vw, 22px) * -0.6); font-size: 0.9375rem; font-weight: 500; font-variant-numeric: tabular-nums; }
+.project__facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(16px, 2vw, 28px) var(--gutter); width: 100%; }
+.project__facts dt { font-size: 0.9375rem; font-weight: 600; }
+.project__facts dd { margin-top: 4px; line-height: 1.5; }
+.project__facts li + li { margin-top: 6px; }
+.project__facts div:nth-child(2) { grid-row: span 2; grid-column: 2; }
+
 /* Record: the list works the way Nungil does. What you look at gets an outline; keep looking and it presses. */
 .record { padding: clamp(64px, 8vw, 120px) var(--margin); background: var(--accent); color: var(--accent-ink); }
 .record :focus-visible { outline-color: #ffffff; }
@@ -367,7 +416,13 @@ html.js .rec__panel { display: block; order: -1; position: sticky; top: 0; z-ind
 .rec__say { display: none; }
 .rec__say-meta { display: flex; flex-wrap: wrap; gap: 0 1em; margin-top: 4px; font-size: 0.9375rem; font-weight: 500; font-variant-numeric: tabular-nums; }
 .rec__wrap { position: relative; margin-inline: -12px; }
-.rec__list { position: relative; z-index: 1; }
+.rec__lists { position: relative; z-index: 1; }
+.rec__head { display: grid; grid-template-rows: 1fr; transition: grid-template-rows 380ms var(--ease-out), opacity 200ms ease; }
+.rec__head h3 { min-height: 0; overflow: clip; margin: 0; padding-inline: 12px; transition: padding-top 380ms var(--ease-out); font-size: var(--step-lead); font-weight: 600; letter-spacing: -0.025em; line-height: 1.3; }
+.rec__group + .rec__group .rec__head h3 { padding-top: clamp(32px, 4vw, 56px); }
+.rec__group.is-out + .rec__group:not(.is-out) .rec__head h3 { padding-top: 0; }
+.rec__group.is-out .rec__head { grid-template-rows: 0fr; opacity: 0; }
+.rec__group.is-out .rec__head h3 { padding-top: 0; }
 .rec { display: grid; grid-template-rows: 1fr; transition: grid-template-rows 380ms var(--ease-out), opacity 200ms ease, color var(--t-hover) ease; }
 .rec.is-out { grid-template-rows: 0fr; opacity: 0; }
 .rec__clip { min-height: 0; overflow: clip; }
@@ -375,7 +430,7 @@ html.js .rec__panel { display: block; order: -1; position: sticky; top: 0; z-ind
 .rec__date { font-size: 0.9375rem; font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .rec__title { font-size: var(--step-row); font-weight: 600; line-height: 1.25; letter-spacing: -0.025em; margin: 0; }
 .rec__result { font-weight: 500; line-height: 1.4; }
-.rec__desc { max-width: 38em; margin-top: 6px; font-size: var(--step-small); font-weight: 500; line-height: 1.55; }
+.rec__desc { max-width: 38em; margin-top: 6px; font-size: 1rem; font-weight: 500; line-height: 1.55; }
 .rec__desc a { display: inline-block; margin-top: 6px; font-weight: 600; text-underline-offset: 0.18em; text-decoration-thickness: 2px; }
 [data-ui].rec__ring, [data-ui].rec__mark { position: absolute; top: 0; left: 0; right: 0; border-radius: 18px; pointer-events: none; will-change: transform, height; }
 [data-ui].rec__ring { z-index: 2; overflow: clip; border: 2px solid #ffffff; }
@@ -403,6 +458,8 @@ html:not(.js) [data-ui].rec__ring { display: none; }
 .contact__weave { display: none; }
 html.js .contact__weave { display: block; width: 100%; height: clamp(180px, 36svh, 380px); touch-action: pan-y; }
 .contact__body { margin-top: clamp(40px, 5vw, 72px); padding-inline: var(--margin); }
+.contact__lead { max-width: 34em; margin-top: clamp(12px, 1.6vw, 24px); }
+.contact__act { display: flex; flex-wrap: wrap; gap: 8px; margin-top: clamp(20px, 2.4vw, 32px); }
 .reach { display: grid; grid-auto-flow: column; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(2, auto); gap: clamp(14px, 1.6vw, 22px) var(--gutter); margin-top: clamp(32px, 4vw, 56px); }
 .reach a { display: grid; grid-template-columns: 6em minmax(0, 1fr); column-gap: 12px; align-items: baseline; text-decoration: none; transition: transform var(--t-press) var(--ease-out); transform-origin: left center; }
 .reach small { grid-column: 2; font-size: 0.9375rem; font-weight: 500; }
@@ -422,6 +479,7 @@ html.js .contact__weave { display: block; width: 100%; height: clamp(180px, 36sv
   background: var(--field-1);
   color: var(--field-1-ink);
 }
+.foot__claim { grid-column: 1 / -1; }
 .foot a { color: inherit; text-underline-offset: 0.2em; }
 .foot__logo { display: block; width: fit-content; align-self: start; transition: transform var(--t-press) var(--ease-out); }
 .foot__logo:active { transform: scale(0.97); }
@@ -437,6 +495,8 @@ html.js .contact__weave { display: block; width: 100%; height: clamp(180px, 36sv
 @media (prefers-reduced-motion: no-preference) {
   .js [data-reveal] { opacity: 0; transform: translateY(24px); transition: opacity 700ms var(--ease-out), transform 900ms var(--ease-out); transition-delay: var(--d, 0ms); }
   .js [data-reveal].is-in { opacity: 1; transform: none; }
+  .js .why__row .why__line { clip-path: inset(-12px 100% -12px 0); transition: clip-path 1100ms var(--ease-out) 120ms; }
+  .js .why__row.is-in .why__line { clip-path: inset(-12px -12px -12px 0); }
 
   [data-lines] .line { display: block; overflow: clip; overflow-clip-margin: 0.04em; }
   [data-lines] .line > span { display: block; }
@@ -444,27 +504,55 @@ html.js .contact__weave { display: block; width: 100%; height: clamp(180px, 36sv
   .is-split.is-in .line > span { transform: none; transition: transform 900ms var(--ease-expo) calc(var(--i) * var(--stagger-line)); }
 }
 
+@media (min-width: 1024px) {
+  html.js .project { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); }
+  html.js .project__view { min-height: 0; }
+}
+
 @media (max-width: 1023px) {
+  .opening { padding-bottom: clamp(200px, 32svh, 420px); }
+  .opening__say { max-width: 44rem; }
+  .why__row { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); }
+  .why__line { display: none; }
+  .what__list { gap: 80px; }
+  .what__row { grid-template-columns: minmax(0, 1fr); }
   .tool__strip { grid-template-columns: minmax(0, 1fr); }
-  .tool__step { min-height: 0; }
+  .tool__step { min-height: 0; padding-block: 44px; }
   html.js .tool__plot { height: clamp(200px, 34svh, 320px); }
   .tool__say { min-height: 0; }
   .reach { grid-auto-flow: row; grid-template-columns: minmax(0, 1fr); grid-template-rows: none; }
+}
+
+@media (max-width: 900px) {
+  .nav__more { display: none; }
+}
+
+/* A short, wide window: the line goes back beside the words. */
+@media (max-width: 1023px) and (max-height: 500px) and (orientation: landscape) {
+  .opening { padding-bottom: 56px; }
+  .opening__say { max-width: 56vw; }
 }
 
 /* Phone: its own composition */
 @media (max-width: 767px) {
   .reach a { grid-template-columns: 5.4em minmax(0, 1fr); column-gap: 8px; }
   :root { --display: min(25.4vw, 17svh); --radius: 22px; }
-  .nav__links { display: none; }
-  .opening { --type: min(calc((100vw - 2 * var(--margin)) / 3.17), 17svh); }
-  html.js .opening:not(.is-rest) .opening__title { bottom: calc(var(--say-h, 160px) + var(--margin) + 8px); flex-direction: column; justify-content: space-between; }
-  html.js .opening:not(.is-rest) .opening__room { bottom: calc(var(--say-h, 160px) + var(--margin) + 8px + var(--type) * 0.98); }
-  html.js .opening:not(.is-rest) .opening__say { inset: auto var(--margin) var(--margin); flex-direction: column; align-items: flex-start; }
-  html.js .opening:not(.is-rest) .opening__say .lead { max-width: none; }
+  .nav__links, .nav__more { display: none; }
+  .nav { gap: 8px; }
+  .nav__menu { display: block; }
+  .button--small { padding-inline: 16px; }
+  .opening { --type: min(calc((100vw - 2 * var(--margin)) / 8.6), 9svh); }
+  .opening__say { max-width: none; }
+  .opening__act { width: 100%; }
+  .opening__act .button { flex: 1 1 0; padding-inline: 12px; }
+
+  .why__row { grid-template-columns: minmax(0, 1fr); }
+  .what__items { grid-template-columns: minmax(0, 1fr); }
+  .project__facts { grid-template-columns: minmax(0, 1fr); }
+  .project__facts div:nth-child(2) { grid-row: auto; grid-column: auto; }
+  .record .segment button { padding-inline: 4px; }
 
   html.js .path.is-live .path__copy { width: auto; right: var(--margin); }
-  .path.is-live .path__beats { min-height: calc(var(--step-head) * 1.1 * 2); }
 
   [data-ui].lab__grid { grid-template-columns: minmax(0, 1fr); }
   [data-ui] .lab__field { min-height: 0; aspect-ratio: 1 / 1; }

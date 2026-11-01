@@ -12,11 +12,9 @@
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
-  // A pixel budget draws finer than the screen where it can afford to, which keeps hairlines from shimmering.
-  const fit = (canvas, budget = 0) => {
+  const fit = (canvas) => {
     const r = canvas.getBoundingClientRect();
-    const screen = Math.min(devicePixelRatio || 1, 2);
-    const ratio = budget ? clamp(Math.sqrt(budget / (r.width * r.height)), screen, 2) : screen;
+    const ratio = Math.min(devicePixelRatio || 1, 2);
     canvas.width = Math.round(r.width * ratio);
     canvas.height = Math.round(r.height * ratio);
     const ctx = canvas.getContext('2d');
@@ -43,388 +41,62 @@
 
   window.Scenes = window.Scenes || {};
 
-  /* Opening: one band of parallel lines with a knot tied in it. The scroll pulls the knot tight, the band lies
-     straight, and its lines thicken until they close over the page, which is how the white opening hands over
-     to the black chapter. */
-  Scenes.opening = (root, o = {}) => {
-    const canvas = root.querySelector('.strands');
-    const stage = root.querySelector('.scene-stage');
-    const first = root.querySelector('.opening__first');
-    const second = root.querySelector('.opening__second');
+  /* Opening: one line with one loop in it, in the room the words leave. The stylesheet draws it once on load;
+     scrolling away pulls the loop out straight. */
+  const opening = () => {
+    const root = document.querySelector('.opening');
+    const path = root.querySelector('.thread path');
     const title = root.querySelector('.opening__title');
     const say = root.querySelector('.opening__say');
-    const nav = document.querySelector('.nav');
-    const small = isPhone();
-    const STEPS = small ? 280 : 400;
-    const Cx = new Float32Array(STEPS + 1);
-    const Cy = new Float32Array(STEPS + 1);
-    const Ox = new Float32Array(STEPS + 1);
-    const Oy = new Float32Array(STEPS + 1);
-    const Sx = new Float32Array(STEPS + 1);
-    const Dx = new Float32Array(STEPS + 1);
-    const Dy = new Float32Array(STEPS + 1);
-    const Tied = new Float32Array(STEPS + 1);
-    const Under = new Float32Array(STEPS + 1);
-    const s = { p: 0, load: 0 };
-    const hand = { x: 0, y: 0, aimX: 0, aimY: 0, k: 0, aim: 0 };
-    let view = null;
+    const beside = matchMedia('(min-width: 1024px), (max-height: 500px) and (orientation: landscape)');
     let g = null;
-    let lines = [];
-    let chosen = 0;
-    let bridges = [];
-    let now = 0;
-    let last = 0;
-
-    // A trefoil in two turns with its lowest lobe opened, so both ends can run out to the edges of the page.
-    const tie = (top, tall) => {
-      const { w } = view;
-      const R = Math.min(tall * 0.3, w * 0.38);
-      const band = R * 0.4;
-      const cx = small ? w * 0.5 : Math.max(w * 0.33, R * 1.32);
-      const cy = top + tall / 2 - R * 0.42;
-      const low = cy + R * 1.68;
-      const rose = (a) => {
-        const r = 0.765 + 0.235 * Math.cos(1.5 * a);
-        return [cx + R * r * Math.sin(a), cy + R * r * Math.cos(a)];
-      };
-      const heading = (a) => {
-        const p = rose(a - 0.001);
-        const q = rose(a + 0.001);
-        const l = Math.hypot(q[0] - p[0], q[1] - p[1]);
-        return [(q[0] - p[0]) / l, (q[1] - p[1]) / l];
-      };
-      const dense = [];
-      const curve = (p0, c0, c1, p1) => {
-        for (let i = 0; i < 240; i++) {
-          const t = i / 240;
-          const m = 1 - t;
-          dense.push([
-            m * m * m * p0[0] + 3 * m * m * t * c0[0] + 3 * m * t * t * c1[0] + t * t * t * p1[0],
-            m * m * m * p0[1] + 3 * m * m * t * c0[1] + 3 * m * t * t * c1[1] + t * t * t * p1[1],
-          ]);
-        }
-      };
-      const JOIN = 0.34;
-      const inAt = rose(JOIN);
-      const inDir = heading(JOIN);
-      const outAt = rose(TAU * 2 - JOIN);
-      const outDir = heading(TAU * 2 - JOIN);
-      // The band leaves as far up and as wide as the width left to the right of the knot allows.
-      const reach = Math.min(R * 1.5, (w * 1.06 - cx) * 0.62);
-      const free = w * 1.06 - (cx + reach);
-      const mid = low - Math.min(R * 1.26, free * 0.3);
-      const wideBand = clamp(free * 0.5, band, tall * 0.62);
-      const left = [-w * 0.06, low];
-      const right = [w * 1.06, mid];
-      const landIn = [cx - reach, low];
-      const landOut = [cx + reach, low];
-      curve(left, [lerp(left[0], landIn[0], 0.33), low], [lerp(left[0], landIn[0], 0.67), low], landIn);
-      curve(landIn, [lerp(landIn[0], inAt[0], 0.55), low], [inAt[0] - inDir[0] * R * 0.6, inAt[1] - inDir[1] * R * 0.6], inAt);
-      const knotFrom = dense.length;
-      for (let i = 0; i < 1400; i++) dense.push(rose(JOIN + ((TAU * 2 - JOIN * 2) * i) / 1400));
-      const exitFrom = dense.length;
-      curve(outAt, [outAt[0] + outDir[0] * R * 0.6, outAt[1] + outDir[1] * R * 0.6], [lerp(landOut[0], outAt[0], 0.55), low], landOut);
-      curve(landOut, [lerp(landOut[0], right[0], 0.45), low], [lerp(landOut[0], right[0], 0.55), mid], right);
-      dense.push(right);
-
-      const run = new Float64Array(dense.length);
-      for (let i = 1; i < dense.length; i++) run[i] = run[i - 1] + Math.hypot(dense[i][0] - dense[i - 1][0], dense[i][1] - dense[i - 1][1]);
-      const total = run[dense.length - 1];
-      const ds = total / STEPS;
-      let k = 0;
-      let tieFrom = 0;
-      let fanFrom = STEPS;
-      for (let j = 0; j <= STEPS; j++) {
-        const aim = ds * j;
-        while (k < dense.length - 2 && run[k + 1] < aim) k++;
-        if (k >= knotFrom && !tieFrom) tieFrom = j;
-        if (k >= exitFrom && fanFrom === STEPS) fanFrom = j;
-        const f = clamp((aim - run[k]) / (run[k + 1] - run[k] || 1), 0, 1);
-        Cx[j] = lerp(dense[k][0], dense[k + 1][0], f);
-        Cy[j] = lerp(dense[k][1], dense[k + 1][1], f);
-        Sx[j] = lerp(-w * 0.06, w * 1.06, j / STEPS);
-      }
-      for (let j = 0; j <= STEPS; j++) {
-        const a = Math.max(0, j - 1);
-        const b = Math.min(STEPS, j + 1);
-        const dx = Cx[b] - Cx[a];
-        const dy = Cy[b] - Cy[a];
-        const l = Math.hypot(dx, dy) || 1;
-        const fan = j >= fanFrom ? smooth(span(Cx[j], cx + R * 0.9, w * 1.02)) : 0;
-        const across = lerp(band, wideBand, fan);
-        Ox[j] = (-dy / l) * across;
-        Oy[j] = (dx / l) * across;
-        Tied[j] = smooth(Math.min(1, j / tieFrom, (STEPS - j) / (STEPS - fanFrom)));
-      }
-
-      const crossings = [];
-      for (let i = 0; i < STEPS; i++) {
-        for (let n = i + 6; n < STEPS; n++) {
-          const ax = Cx[i + 1] - Cx[i];
-          const ay = Cy[i + 1] - Cy[i];
-          const bx = Cx[n + 1] - Cx[n];
-          const by = Cy[n + 1] - Cy[n];
-          const d = ax * by - ay * bx;
-          if (!d) continue;
-          const ex = Cx[n] - Cx[i];
-          const ey = Cy[n] - Cy[i];
-          const u1 = (ex * by - ey * bx) / d;
-          const u2 = (ex * ay - ey * ax) / d;
-          if (u1 >= 0 && u1 < 1 && u2 >= 0 && u2 < 1) crossings.push([i + u1, n + u2]);
-        }
-      }
-      // Walking the band, it goes over, then under, then over: the weave that makes a knot read as one.
-      const gapPx = clamp(band * 0.1, 4, 11);
-      const near = (j, other) => {
-        const around = Math.ceil((band * 2) / ds);
-        let best = Infinity;
-        for (let n = Math.max(0, other - around); n <= Math.min(STEPS, other + around); n++) best = Math.min(best, Math.hypot(Cx[j] - Cx[n], Cy[j] - Cy[n]));
-        return best;
-      };
-      const passes = crossings.flatMap(([i, n]) => [{ j: i, other: Math.round(n) }, { j: n, other: Math.round(i) }]).sort((a, b) => a.j - b.j);
-      Under.fill(0);
-      bridges = [];
-      passes.forEach((pass, n) => {
-        const touching = (j) => near(j, pass.other) < band + gapPx;
-        let a = Math.floor(pass.j);
-        let b = Math.ceil(pass.j);
-        while (a > 1 && touching(a - 1)) a--;
-        while (b < STEPS - 2 && touching(b + 1)) b++;
-        if (n % 2 === 0) bridges.push([a, b]);
-        else for (let j = a; j <= b; j++) Under[j] = Math.max(Under[j], clamp(Math.min(j - a, b - j) / 3, 0, 1));
-      });
-      // Each stretch reaches toward a crossing it goes under, so it must be painted before the stretch on top
-      // there. Walking order gives that, except that the last one reaches the first, which it must precede.
-      bridges.unshift(bridges.pop());
-
-      // A bigger knot gets wider spacing and heavier lines, so it reads the same at every size.
-      const count = clamp(Math.round(band / (small ? 4.6 : 4 + R * 0.012)), 6, 24);
-      lines = Array.from({ length: count }, (_, i) => i / (count - 1) - 0.5);
-      chosen = Math.floor(count * 0.62);
-      g = { R, cx, cy, mid, band: wideBand, clear: 0.5 + gapPx / band, sway: R * 0.022, line: small ? 1 : clamp(R * 0.0075, 1.1, 1.6) };
+    let frame = 0;
+    // In loop radii from where the line meets the loop, y upward: in from the left, round, and out underneath.
+    const LOOP = [[-3.2, 0], [-1, 0], [1.1, 0.2], [1.1, 0.95], [1.1, 1.5], [0.6, 1.9], [0, 1.9], [-0.6, 1.9], [-1.1, 1.5], [-1.1, 0.95], [-1.1, 0.2], [-0.6, -0.25], [0.6, -0.25], [1.6, -0.25], [2.6, 0], [3.4, 0]];
+    const trace = (k) => {
+      const { w, base, cx, R } = g;
+      const at = ([x, y]) => `${(cx + x * R).toFixed(1)} ${(base - y * R * (1 - k)).toFixed(1)}`;
+      const curves = [];
+      for (let i = 1; i < LOOP.length; i += 3) curves.push(`C${at(LOOP[i])} ${at(LOOP[i + 1])} ${at(LOOP[i + 2])}`);
+      path.setAttribute('d', `M-8 ${base}L${at(LOOP[0])}${curves.join('')}L${Math.max(w + 8, cx + 3.4 * R)} ${base}`);
     };
-
+    const pulled = () => (calm() ? 0 : smooth(span(scrollY, 0, g.h * 0.7)));
     const measure = () => {
-      view = fit(canvas, 9e6);
-      root.style.setProperty('--say-h', `${say.offsetHeight}px`);
-      if (root.classList.contains('is-rest')) { tie(0, view.h); return; }
-      const a = root.querySelector('.opening__room').getBoundingClientRect();
-      const c = stage.getBoundingClientRect();
-      tie(a.top - c.top, Math.max(120, a.bottom - a.top));
-    };
-
-    const paint = (t) => {
-      if (!view || !g) return;
-      now = t || now;
-      const dt = last ? clamp((now - last) / 1000, 0, 0.05) : 0;
-      last = now;
-      hand.x += (hand.aimX - hand.x) * Math.min(1, dt * 9);
-      hand.y += (hand.aimY - hand.y) * Math.min(1, dt * 9);
-      hand.k += (hand.aim - hand.k) * Math.min(1, dt * 5);
-
-      const { ctx, w, h } = view;
-      const p = s.p;
-      // The knot is pulled tight to a point, and only then does the band lie straight.
-      const pull = smooth(span(p, 0, 0.24));
-      const open = smooth(span(p, 0.2, 0.42));
-      const wide = smooth(span(p, 0.3, 0.6));
-      const fat = smooth(span(p, 0.52, 0.84));
-      nav.classList.toggle('on-dark', fat > 0.7 && root.getBoundingClientRect().bottom > 0);
-      ctx.clearRect(0, 0, w, h);
-      const band = lerp(g.band, h * 1.08, wide);
-      const mid = lerp(g.mid, h / 2, wide);
-      const limit = Math.max(1, Math.floor(STEPS * s.load));
-      const tau = now * 0.001;
-      const sway = g.sway * (1 - wide);
-      const pointX = lerp(g.cx, w / 2, pull);
-      const pointY = lerp(g.cy, mid, pull);
-      for (let j = 0; j <= STEPS; j++) {
-        Dx[j] = sway * Math.sin(Cy[j] * 0.0045 + tau * 0.42);
-        Dy[j] = sway * Math.sin(Cx[j] * 0.0038 + tau * 0.36 + 1.7);
-      }
-      let px = 0;
-      let py = 0;
-      const at = (r, j) => {
-        const held = pull * Tied[j];
-        const rx = lerp(Cx[j], pointX, held) + r * Ox[j] * (1 - held);
-        const ry = lerp(Cy[j], pointY, held) + r * Oy[j] * (1 - held);
-        let x = lerp(rx, Sx[j], open) + Dx[j];
-        let y = lerp(ry, mid + r * band, open) + Dy[j];
-        if (hand.k > 0.004) {
-          const dx = x - hand.x;
-          const dy = y - hand.y;
-          const d2 = dx * dx + dy * dy;
-          if (d2 < 50000) {
-            const d = Math.sqrt(d2) + 0.001;
-            const push = Math.exp(-d2 / 12000) * 44 * hand.k;
-            x += (dx / d) * push;
-            y += (dy / d) * push;
-          }
-        }
-        px = x;
-        py = y;
-      };
-      const trace = (r, a, b) => {
-        ctx.beginPath();
-        at(r, a);
-        let qx = px;
-        let qy = py;
-        if (a > 0) {
-          at(r, a - 1);
-          ctx.moveTo((qx + px) / 2, (qy + py) / 2);
-        } else ctx.moveTo(qx, qy);
-        for (let j = a + 1; j <= b; j++) {
-          at(r, j);
-          ctx.quadraticCurveTo(qx, qy, (qx + px) / 2, (qy + py) / 2);
-          qx = px;
-          qy = py;
-        }
-        if (b === limit) ctx.lineTo(qx, qy);
-      };
-      ctx.lineJoin = 'round';
-      ctx.lineCap = 'butt';
-      // The lines leave the knot black and arrive blue, the same turn the logo makes from E to Y.
-      const wash = ctx.createLinearGradient(g.cx + g.R, 0, w * 0.92, 0);
-      wash.addColorStop(0, '#111111');
-      wash.addColorStop(1, `rgb(${Math.round(lerp(0, 17, fat))},${Math.round(lerp(108, 17, fat))},${Math.round(lerp(255, 17, fat))})`);
-      const weight = lerp(g.line, band / (lines.length - 1) + 1.5, fat);
-      const ink = () => {
-        ctx.strokeStyle = wash;
-        ctx.lineWidth = weight;
-      };
-      const thread = (a, b) => {
-        trace(lines[chosen], a, b);
-        ctx.strokeStyle = '#006cff';
-        ctx.lineWidth = g.line * 1.9;
-        ctx.stroke();
-      };
-      if (fat >= 1) {
-        ctx.fillStyle = '#111111';
-        ctx.fillRect(0, 0, w, h);
+      const box = root.getBoundingClientRect();
+      const words = say.getBoundingClientRect();
+      const w = box.width;
+      const h = box.height;
+      const edge = parseFloat(getComputedStyle(root).paddingLeft);
+      const floor = h - clamp(h * 0.05, 20, 44);
+      let R;
+      let cx;
+      if (beside.matches) {
+        const top = title.getBoundingClientRect().bottom - box.top + 24;
+        R = clamp(Math.min((w - (words.right - box.left) - edge * 2) / 2.4, (floor - top) / 2.15, h * 0.17), 12, 220);
+        cx = w * 0.76;
       } else {
-        ink();
-        lines.forEach((r) => {
-          trace(r, 0, limit);
-          ctx.stroke();
-        });
+        const top = words.bottom - box.top + 24;
+        R = clamp(Math.min((floor - top) / 2.15, w * 0.2), 12, 220);
+        cx = w * 0.6;
       }
-      // One thread stays blue from the knot to the next chapter, with a signal running along it.
-      thread(0, limit);
-
-      // Where the band passes over itself, clear what lies under it and draw that stretch again on top.
-      if (pull < 1) {
-        // Just inside where a trace starts and stops, halfway between samples, so nothing is inked twice or left pale.
-        const seam = (r, j, f) => {
-          at(r, j);
-          const x = px;
-          const y = py;
-          at(r, j + 1);
-          px = lerp(x, px, f);
-          py = lerp(y, py, f);
-        };
-        const edge = g.clear;
-        bridges.forEach(([a, b]) => {
-          if (a >= limit) return;
-          const end = Math.min(b, limit - 1);
-          ctx.globalCompositeOperation = 'destination-out';
-          ctx.beginPath();
-          seam(edge, a - 1, 0.56);
-          ctx.moveTo(px, py);
-          for (let j = a; j <= end; j++) { at(edge, j); ctx.lineTo(px, py); }
-          seam(edge, end, 0.44);
-          ctx.lineTo(px, py);
-          seam(-edge, end, 0.44);
-          ctx.lineTo(px, py);
-          for (let j = end; j >= a; j--) { at(-edge, j); ctx.lineTo(px, py); }
-          seam(-edge, a - 1, 0.56);
-          ctx.lineTo(px, py);
-          ctx.closePath();
-          ctx.fill();
-          ctx.globalCompositeOperation = 'source-over';
-          ink();
-          lines.forEach((r) => {
-            trace(r, a, end + 1);
-            ctx.stroke();
-          });
-          thread(a, end + 1);
-        });
-      }
-
-      if (s.load >= 1 && !calm()) {
-        const travel = ((now * 0.00007) % 1) * STEPS;
-        const j = Math.min(STEPS - 1, Math.floor(travel));
-        const size = 1 - Math.max(Under[j], Under[j + 1]) * (1 - pull);
-        if (size > 0.02) {
-          at(lines[chosen], j);
-          const ax = px;
-          const ay = py;
-          at(lines[chosen], j + 1);
-          const dotX = lerp(ax, px, travel - j);
-          const dotY = lerp(ay, py, travel - j);
-          ctx.globalCompositeOperation = 'destination-out';
-          ctx.beginPath();
-          ctx.arc(dotX, dotY, lerp(8, 4.5, fat) * size, 0, TAU);
-          ctx.fill();
-          ctx.globalCompositeOperation = 'source-over';
-          ctx.fillStyle = '#006cff';
-          ctx.beginPath();
-          ctx.arc(dotX, dotY, 4.5 * size, 0, TAU);
-          ctx.fill();
-        }
-      }
+      const base = floor - R * 0.25;
+      g = { w, h, base, cx, R };
+      trace(pulled());
     };
-
-    const mm = Stage.scene(root, {
-      hold: o.hold ?? 1.9,
-      scrub: Stage.lenis ? true : 0.3,
-      build(tl, { q, phone }) {
-        measure();
-        tl.to(s, { p: 1, duration: 0.84, ease: 'none', onUpdate: () => paint() }, 0);
-        tl.to(first, phone ? { yPercent: -120, duration: 0.3, ease: 'power2.in' } : { xPercent: -112, duration: 0.3, ease: 'power2.in' }, 0.02);
-        tl.to(second, phone ? { xPercent: 112, duration: 0.3, ease: 'power2.in' } : { xPercent: 112, duration: 0.3, ease: 'power2.in' }, 0.02);
-        tl.to(say, { autoAlpha: 0, y: 32, duration: 0.14, ease: 'power1.in' }, 0.02);
-        tl.set(title, { autoAlpha: 0 }, 0.36);
-        tl.fromTo(q('.opening__claim'), { opacity: 0, y: 48 }, { opacity: 1, y: 0, duration: 0.12, ease: 'power2.out' }, 0.76);
-        paint();
-      },
-      rest() {
-        nav.classList.remove('on-dark');
-        s.p = 0;
-        s.load = 1;
-        measure();
-        paint(1);
-      },
-    });
-
-    if (root.classList.contains('is-live')) {
-      ScrollTrigger.addEventListener('refresh', () => { measure(); paint(); });
-      gsap.to(s, { load: 1, duration: 2, ease: 'power2.inOut' });
-      whileVisible(stage, paint);
-      addEventListener('pointermove', (e) => {
-        if (e.pointerType !== 'mouse') return;
-        const r = stage.getBoundingClientRect();
-        if (e.clientY > r.bottom || e.clientY < r.top) { hand.aim = 0; return; }
-        hand.aimX = e.clientX;
-        hand.aimY = e.clientY - r.top;
-        if (hand.aim === 0) { hand.x = hand.aimX; hand.y = hand.aimY; }
-        hand.aim = 1;
-      }, { passive: true });
-      document.addEventListener('pointerleave', () => { hand.aim = 0; });
-      stage.addEventListener('pointerdown', (e) => {
-        if (e.pointerType === 'mouse') return;
-        const r = stage.getBoundingClientRect();
-        hand.x = hand.aimX = e.clientX;
-        hand.y = hand.aimY = e.clientY - r.top;
-        hand.aim = 1;
-        hand.k = 1;
-        setTimeout(() => { hand.aim = 0; }, 260);
-      }, { passive: true });
-    }
-    return mm;
+    new ResizeObserver(measure).observe(root);
+    measure();
+    if (document.fonts) document.fonts.ready.then(measure);
+    addEventListener('scroll', () => {
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        if (scrollY < g.h * 1.1) trace(pulled());
+      });
+    }, { passive: true });
   };
 
-  /* Path: one continuous line in 3D. Every shape is walked along its own edges, so the morph never
-     needs a stray stroke: a tangle, a plan, a made thing, a rising business, and last the company's mark. */
+  /* Path: how the work goes, on one continuous line in 3D. Every shape is walked along its own edges, so the morph
+     never needs a stray stroke: a tangle to discover, a plan, a made thing, what gets delivered, and last the mark. */
   const walk = (nodes, edges, count) => {
     const links = nodes.map(() => []);
     edges.forEach(([a, b], id) => { links[a].push([b, id]); links[b].push([a, id]); });
@@ -577,9 +249,10 @@
     const shapes = [shapeKnot(N), shapePlan(N), shapeMade(N), shapeBars(N), shapeLogo(N)];
     const logo = shapes[4];
     const TILT = [0.42, 0.98, 0.58, 0.3, 0];
-    const ZOOM = [1, 0.8, 0.92, 0.82, 0.94];
-    const MORPHS = [[0.12, 0.24], [0.34, 0.46], [0.56, 0.68], [0.78, 0.9]];
-    const SWAPS = [0.175, 0.395, 0.615, 0.835];
+    const ZOOM = [0.92, 0.8, 0.92, 0.82, 0.94];
+    const MORPHS = [[0.2, 0.3], [0.38, 0.48], [0.58, 0.68], [0.78, 0.9]];
+    // The title, then each working step as its shape forms, then the company's line. Only the steps are counted.
+    const SWAPS = [0.08, 0.24, 0.43, 0.63, 0.84];
     const s = { t: 0 };
     const sx = new Float32Array(N);
     const sy = new Float32Array(N);
@@ -690,15 +363,18 @@
           ctx.fill();
         }
       }
-      if (count) count.textContent = `${SWAPS.filter((at2) => t >= at2 + 0.015).length + 1} / 5`;
+      if (count) {
+        const step = SWAPS.filter((at2) => t >= at2 + 0.015).length;
+        count.textContent = step >= 1 && step <= 4 ? `${step} / 4` : '';
+      }
     };
 
     const resize = () => { view = fit(canvas); paint(); };
     const mm = Stage.scene(root, {
-      hold: o.hold ?? 3.4,
+      hold: o.hold ?? 3.8,
       scrub: Stage.lenis ? true : 0.3,
       build(tl, { q }) {
-        const beats = q('.path__beats li');
+        const beats = q('.path__title, .path__beats li, .path__end');
         s.t = 0;
         tl.to(s, { t: 1, duration: 1, onUpdate: () => paint() }, 0);
         SWAPS.forEach((at2, i) => {
@@ -1225,6 +901,28 @@
       wake();
     });
     box.addEventListener('pointerleave', () => { ghost = null; wake(); });
+    // From the keyboard: the arrows move the same ring the pointer shows, and Enter places the point.
+    box.tabIndex = 0;
+    box.setAttribute('role', 'group');
+    box.setAttribute('aria-label', '점을 찍는 영역. 화살표 키로 위치를 옮기고 Enter 키로 점을 찍습니다.');
+    box.addEventListener('focus', () => {
+      if (box.matches(':focus-visible')) { ghost = { x: field.w / 2, y: field.h / 2 }; wake(); }
+    });
+    box.addEventListener('blur', () => { ghost = null; wake(); });
+    box.addEventListener('keydown', (e) => {
+      const move = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
+      if (!move && e.key !== 'Enter' && e.key !== ' ') return;
+      e.preventDefault();
+      const at = ghost || { x: field.w / 2, y: field.h / 2 };
+      if (move) {
+        ghost = { x: clamp(at.x + move[0] * 24, 0, field.w), y: clamp(at.y + move[1] * 24, 0, field.h) };
+        wake();
+        return;
+      }
+      ghost = at;
+      state.points.push({ ...toData(at.x, at.y), c: state.mark });
+      changed();
+    });
 
     new ResizeObserver(() => { sizeField(); wake(); }).observe(box);
     sizeField();
@@ -1500,31 +1198,10 @@
     addEventListener('scroll', () => { if (still) wake(); }, { passive: true });
   };
 
-  /* Record: the list behaves like Nungil, the company's gaze-controlled browser. What you look at gets an
-     outline; keep looking and it presses. A pressed item fills the dot display and the panel beside the list. */
-  const record = () => {
-    const root = document.querySelector('.record');
-    const wrap = root.querySelector('.rec__wrap');
-    const rows = [...root.querySelectorAll('.rec')];
-    const ring = root.querySelector('.rec__ring');
-    const fill = ring.firstElementChild;
-    const mark = root.querySelector('.rec__mark');
-    const canvas = root.querySelector('.rec__dots');
-    const say = root.querySelector('.rec__say');
-    const sayTitle = say.querySelector('.rec__say-title');
-    const sayDate = say.querySelector('.rec__say-meta span');
-    const segment = root.querySelector('.segment');
-    const wideQuery = matchMedia('(min-width: 1024px) and (hover: hover) and (pointer: fine)');
+  /* The dot display: each dot's size is how much of a shape covers it, drawn small so edges stay soft. */
+  const FAMILY = '"Pretendard Variable", Pretendard, sans-serif';
+  const dotDisplay = (canvas, ink = '255,255,255') => {
     const still = calm();
-    const DWELL = 700;
-    const AUTO_STEP = 3000;
-    const IDLE = 1800;
-    const OMEGA = (2 * Math.PI) / 0.32;
-    const FAMILY = '"Pretendard Variable", Pretendard, sans-serif';
-    segment.hidden = false;
-    root.querySelector('.record__hint').hidden = false;
-
-    /* The dot display: each dot's size is how much of a shape covers it, drawn small so edges stay soft. */
     const off = document.createElement('canvas');
     const octx = off.getContext('2d', { willReadFrequently: true });
     let view = null;
@@ -1569,7 +1246,7 @@
         c.clearRect(0, 0, cols, lines);
         const cx = cols / 2;
         const cy = lines / 2;
-        const W = Math.min(cols * 0.84, lines * 1.85);
+        const W = Math.min(cols * 0.84, lines * 1.46);
         const H = W * 0.62;
         const lid = () => {
           c.beginPath();
@@ -1691,7 +1368,7 @@
         path.arc(px, py, r, 0, TAU);
       }
       levels.forEach((path, n) => {
-        ctx.fillStyle = `rgba(255,255,255,${0.26 + (0.74 * n) / 5})`;
+        ctx.fillStyle = `rgba(${ink},${0.26 + (0.74 * n) / 5})`;
         ctx.fill(path);
       });
     };
@@ -1709,27 +1386,12 @@
       dirty = false;
     };
 
-    /* Rows */
-    let chosen = rows[0];
-    let gaze = rows[0];
-    let dwell = null;
-    let autoLeft = still ? 0 : rows.length;
-    let wide = wideQuery.matches;
-    let visible = false;
-    let near = false;
-    let lastMove = -1e9;
-    let pointer = null;
-    let moveX = -1;
-    let moveY = -1;
-    const look = { x: 0, y: 0 };
-
-    const showScene = (row) => {
-      const shape = row.dataset.shape;
-      if (shape) shapes[shape](); else word(row.dataset.led);
+    const show = (scene) => {
+      if (scene.shape) shapes[scene.shape](); else word(scene.led);
       sinceChange = 0;
       dirty = true;
     };
-    const sizeDots = () => {
+    const size = () => {
       view = fit(canvas);
       pitch = view.w < 640 ? 6 : 8;
       cols = Math.max(8, Math.floor(view.w / pitch));
@@ -1744,8 +1406,49 @@
       wait = new Float32Array(n);
       const random = seeded(41);
       for (let i = 0; i < n; i++) wait[i] = ((i % cols) / cols) * 0.26 + random() * 0.06;
-      showScene(chosen);
     };
+    return { size, show, step: stepDots, look: shapes.eye, settled: () => sinceChange > 0.5 };
+  };
+
+  /* Record: the list behaves like Nungil, the company's gaze-controlled browser. What you look at gets an
+     outline; keep looking and it presses. A pressed item fills the dot display and the panel beside the list. */
+  const record = () => {
+    const root = document.querySelector('.record');
+    const wrap = root.querySelector('.rec__wrap');
+    const rows = [...root.querySelectorAll('.rec')];
+    const ring = root.querySelector('.rec__ring');
+    const fill = ring.firstElementChild;
+    const mark = root.querySelector('.rec__mark');
+    const canvas = root.querySelector('.rec__dots');
+    const say = root.querySelector('.rec__say');
+    const sayTitle = say.querySelector('.rec__say-title');
+    const sayDate = say.querySelector('.rec__say-meta span');
+    const segment = root.querySelector('.segment');
+    const wideQuery = matchMedia('(min-width: 1024px) and (hover: hover) and (pointer: fine)');
+    const still = calm();
+    const DWELL = 700;
+    const AUTO_STEP = 3000;
+    const IDLE = 1800;
+    const OMEGA = (2 * Math.PI) / 0.32;
+    const dots = dotDisplay(canvas);
+    const groups = [...root.querySelectorAll('.rec__group')];
+    segment.hidden = false;
+    root.querySelector('.record__hint').hidden = false;
+
+    /* Rows */
+    let chosen = rows[0];
+    let gaze = rows[0];
+    let dwell = null;
+    let autoLeft = still ? 0 : rows.length;
+    let wide = wideQuery.matches;
+    let visible = false;
+    let near = false;
+    let lastMove = -1e9;
+    let moveX = -1;
+    let moveY = -1;
+
+    const showScene = (row) => dots.show(row.dataset);
+    const sizeDots = () => { dots.size(); showScene(chosen); };
     const tell = () => {
       sayTitle.textContent = chosen.querySelector('.rec__title').textContent;
       sayDate.textContent = chosen.querySelector('.rec__date').textContent;
@@ -1860,24 +1563,7 @@
       if (wide) follow(mark, markSpring, chosen, dt);
       fill.style.transform = `scaleX(${progress.toFixed(3)})`;
 
-      if (chosen.dataset.shape === 'eye' && !still && sinceChange > 0.5) {
-        let aimX = Math.sin(now * 0.0011) * 0.7;
-        let aimY = Math.sin(now * 0.0017) * 0.35;
-        if (pointer && now - lastMove < 3000) {
-          const b = canvas.getBoundingClientRect();
-          aimX = clamp((pointer.x - (b.left + b.width / 2)) / (b.width / 2), -1, 1);
-          aimY = clamp((pointer.y - (b.top + b.height / 2)) / (b.height / 2), -1, 1);
-        }
-        const k = 1 - Math.exp(-dt * 7);
-        const nx = look.x + (aimX - look.x) * k;
-        const ny = look.y + (aimY - look.y) * k;
-        if (Math.abs(nx - look.x) + Math.abs(ny - look.y) > 0.003) {
-          look.x = nx;
-          look.y = ny;
-          shapes.eye(nx, ny);
-        }
-      }
-      stepDots(dt);
+      dots.step(dt);
       frame = visible ? requestAnimationFrame(tick) : 0;
       if (!frame) last = 0;
     };
@@ -1888,7 +1574,6 @@
       if (e.clientX === moveX && e.clientY === moveY) return;
       moveX = e.clientX;
       moveY = e.clientY;
-      pointer = { x: e.clientX, y: e.clientY };
       lastMove = performance.now();
     }, { passive: true });
     wrap.addEventListener('pointermove', (e) => {
@@ -1942,6 +1627,7 @@
         r.classList.toggle('is-out', !on);
         r.inert = !on;
       });
+      groups.forEach((g) => { g.classList.toggle('is-out', kind !== 'all' && g.dataset.kind !== kind); });
       autoLeft = 0;
       dwell = null;
       if (chosen.classList.contains('is-out')) choose(shown()[0], true);
@@ -1966,6 +1652,50 @@
         if (visible) wake();
       }, { threshold: [0, 0.3, 0.6] }).observe(root);
     } else { visible = true; near = true; wake(); }
+  };
+
+  /* Projects: each one on the dot display. Nungil's eye looks where the pointer is, or looks around by itself. */
+  const projects = () => {
+    const still = calm();
+    let pointer = null;
+    let lastMove = -1e9;
+    addEventListener('pointermove', (e) => {
+      if (e.pointerType !== 'mouse') return;
+      pointer = { x: e.clientX, y: e.clientY };
+      lastMove = performance.now();
+    }, { passive: true });
+    document.querySelectorAll('.project__view canvas').forEach((canvas) => {
+      const dots = dotDisplay(canvas, canvas.dataset.ink);
+      const scene = canvas.dataset;
+      const look = { x: 0, y: 0 };
+      let last = 0;
+      const wake = whileVisible(canvas, (now) => {
+        const dt = last ? clamp((now - last) / 1000, 0, 1 / 30) : 0;
+        last = now;
+        if (scene.shape === 'eye' && !still && dots.settled()) {
+          let aimX = Math.sin(now * 0.0011) * 0.7;
+          let aimY = Math.sin(now * 0.0017) * 0.35;
+          if (pointer && now - lastMove < 3000) {
+            const b = canvas.getBoundingClientRect();
+            aimX = clamp((pointer.x - (b.left + b.width / 2)) / (b.width / 2), -1, 1);
+            aimY = clamp((pointer.y - (b.top + b.height / 2)) / (b.height / 2), -1, 1);
+          }
+          const k = 1 - Math.exp(-dt * 7);
+          const nx = look.x + (aimX - look.x) * k;
+          const ny = look.y + (aimY - look.y) * k;
+          if (Math.abs(nx - look.x) + Math.abs(ny - look.y) > 0.003) {
+            look.x = nx;
+            look.y = ny;
+            dots.look(nx, ny);
+          }
+        }
+        dots.step(dt);
+      });
+      const fill = () => { dots.size(); dots.show(scene); wake(); };
+      new ResizeObserver(fill).observe(canvas);
+      fill();
+      if (scene.led && document.fonts && document.fonts.load) document.fonts.load(`700 40px ${FAMILY}`, scene.led).then(fill).catch(() => {});
+    });
   };
 
   /* Contact: two sets of lines come in from either side and interlock as the section arrives. */
@@ -2066,6 +1796,14 @@
       lastY = y;
     }, { passive: true });
     nav.addEventListener('focusin', () => nav.classList.remove('is-away'));
+    const menu = nav.querySelector('.nav__menu');
+    menu.addEventListener('click', (e) => { if (e.target.closest('a')) menu.open = false; });
+    addEventListener('scroll', () => { if (nav.classList.contains('is-away')) menu.open = false; }, { passive: true });
+    addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape' || !menu.open) return;
+      menu.open = false;
+      menu.querySelector('summary').focus();
+    });
 
     if ('IntersectionObserver' in window) {
       const tones = new IntersectionObserver((entries) => {
@@ -2152,9 +1890,11 @@
   Stage.smooth();
   Stage.init();
   quiet();
+  opening();
   tool();
   lab();
   flow();
   record();
+  projects();
   weave();
 })();
