@@ -1062,8 +1062,8 @@
     hint.hidden = false;
 
     const LEVELS = [
-      [{ name: '엄격', at: 0.9 }, { name: '보통', at: 0.78 }, { name: '느슨', at: 0.55 }],
-      [{ name: '엄격', at: 0.72 }, { name: '보통', at: 0.42 }, { name: '느슨', at: 0.16 }],
+      [{ name: '엄격', at: 0.9 }, { name: '보통', at: 0.78 }, { name: '여유', at: 0.55 }],
+      [{ name: '엄격', at: 0.72 }, { name: '보통', at: 0.42 }, { name: '여유', at: 0.16 }],
     ];
     const level = [1, 1];
     const random = seeded(23);
@@ -1288,7 +1288,7 @@
       const tell = () => {
         const name = LEVELS[i][level[i]].name;
         button.querySelector('small').textContent = `기준 ${name}`;
-        button.setAttribute('aria-label', `${button.querySelector('b').textContent}: 기준 ${name}. 누르면 기준이 바뀝니다.`);
+        button.setAttribute('aria-label', `${button.querySelector('b').textContent}: 기준 ${name}. 선택하면 기준이 바뀝니다.`);
       };
       tell();
       button.addEventListener('click', () => {
