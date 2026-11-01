@@ -12,9 +12,11 @@
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
-  const fit = (canvas) => {
+  // A pixel budget draws finer than the screen where it can afford to, which keeps hairlines from shimmering.
+  const fit = (canvas, budget = 0) => {
     const r = canvas.getBoundingClientRect();
-    const ratio = Math.min(devicePixelRatio || 1, 2);
+    const screen = Math.min(devicePixelRatio || 1, 2);
+    const ratio = budget ? clamp(Math.sqrt(budget / (r.width * r.height)), screen, 2) : screen;
     canvas.width = Math.round(r.width * ratio);
     canvas.height = Math.round(r.height * ratio);
     const ctx = canvas.getContext('2d');
@@ -41,8 +43,9 @@
 
   window.Scenes = window.Scenes || {};
 
-  /* Opening: a tangle pulled out into parallel lines. The scroll undoes the knot, then the lines thicken
-     until they close over the page, which is how the white opening hands over to the black chapter. */
+  /* Opening: one band of parallel lines with a knot tied in it. The scroll pulls the knot tight, the band lies
+     straight, and its lines thicken until they close over the page, which is how the white opening hands over
+     to the black chapter. */
   Scenes.opening = (root, o = {}) => {
     const canvas = root.querySelector('.strands');
     const stage = root.querySelector('.scene-stage');
@@ -52,69 +55,164 @@
     const say = root.querySelector('.opening__say');
     const nav = document.querySelector('.nav');
     const small = isPhone();
-    const COUNT = small ? 44 : 64;
-    const STEPS = small ? 140 : 200;
-    const CHOSEN = Math.floor(COUNT * 0.62);
-    const random = seeded(3);
-    const strands = Array.from({ length: COUNT }, (_, i) => ({
-      r: (i + 0.5) / COUNT - 0.5,
-      f1: 2 + Math.floor(random() * 3) + (random() < 0.5 ? 0.5 : 0),
-      f2: 3 + Math.floor(random() * 4),
-      p1: random() * TAU,
-      p2: random() * TAU,
-    }));
+    const STEPS = small ? 280 : 400;
+    const Cx = new Float32Array(STEPS + 1);
+    const Cy = new Float32Array(STEPS + 1);
+    const Ox = new Float32Array(STEPS + 1);
+    const Oy = new Float32Array(STEPS + 1);
+    const Sx = new Float32Array(STEPS + 1);
+    const Dx = new Float32Array(STEPS + 1);
+    const Dy = new Float32Array(STEPS + 1);
+    const Tied = new Float32Array(STEPS + 1);
+    const Under = new Float32Array(STEPS + 1);
     const s = { p: 0, load: 0 };
     const hand = { x: 0, y: 0, aimX: 0, aimY: 0, k: 0, aim: 0 };
     let view = null;
     let g = null;
+    let lines = [];
+    let chosen = 0;
+    let bridges = [];
     let now = 0;
     let last = 0;
 
-    const measure = () => {
-      view = fit(canvas);
-      root.style.setProperty('--say-h', `${say.offsetHeight}px`);
-      const a = root.querySelector('.opening__room').getBoundingClientRect();
-      const c = stage.getBoundingClientRect();
-      const top = a.top - c.top;
-      const bottom = a.bottom - c.top;
-      const room = Math.max(120, bottom - top);
-      g = {
-        cx: view.w * (small ? 0.4 : 0.31),
-        cy: top + room / 2,
-        R: Math.min(room * 0.47, view.w * (small ? 0.34 : 0.2)),
-        band: Math.min(room * 0.74, 520),
+    // A trefoil in two turns with its lowest lobe opened, so both ends can run out to the edges of the page.
+    const tie = (top, tall) => {
+      const { w } = view;
+      const R = Math.min(tall * 0.3, w * 0.38);
+      const band = R * 0.4;
+      const cx = small ? w * 0.5 : Math.max(w * 0.33, R * 1.32);
+      const cy = top + tall / 2 - R * 0.42;
+      const low = cy + R * 1.68;
+      const rose = (a) => {
+        const r = 0.765 + 0.235 * Math.cos(1.5 * a);
+        return [cx + R * r * Math.sin(a), cy + R * r * Math.cos(a)];
       };
-    };
+      const heading = (a) => {
+        const p = rose(a - 0.001);
+        const q = rose(a + 0.001);
+        const l = Math.hypot(q[0] - p[0], q[1] - p[1]);
+        return [(q[0] - p[0]) / l, (q[1] - p[1]) / l];
+      };
+      const dense = [];
+      const curve = (p0, c0, c1, p1) => {
+        for (let i = 0; i < 240; i++) {
+          const t = i / 240;
+          const m = 1 - t;
+          dense.push([
+            m * m * m * p0[0] + 3 * m * m * t * c0[0] + 3 * m * t * t * c1[0] + t * t * t * p1[0],
+            m * m * m * p0[1] + 3 * m * m * t * c0[1] + 3 * m * t * t * c1[1] + t * t * t * p1[1],
+          ]);
+        }
+      };
+      const JOIN = 0.34;
+      const inAt = rose(JOIN);
+      const inDir = heading(JOIN);
+      const outAt = rose(TAU * 2 - JOIN);
+      const outDir = heading(TAU * 2 - JOIN);
+      // The band leaves as far up and as wide as the width left to the right of the knot allows.
+      const reach = Math.min(R * 1.5, (w * 1.06 - cx) * 0.62);
+      const free = w * 1.06 - (cx + reach);
+      const mid = low - Math.min(R * 1.26, free * 0.3);
+      const wideBand = clamp(free * 0.5, band, tall * 0.62);
+      const left = [-w * 0.06, low];
+      const right = [w * 1.06, mid];
+      const landIn = [cx - reach, low];
+      const landOut = [cx + reach, low];
+      curve(left, [lerp(left[0], landIn[0], 0.33), low], [lerp(left[0], landIn[0], 0.67), low], landIn);
+      curve(landIn, [lerp(landIn[0], inAt[0], 0.55), low], [inAt[0] - inDir[0] * R * 0.6, inAt[1] - inDir[1] * R * 0.6], inAt);
+      const knotFrom = dense.length;
+      for (let i = 0; i < 1400; i++) dense.push(rose(JOIN + ((TAU * 2 - JOIN * 2) * i) / 1400));
+      const exitFrom = dense.length;
+      curve(outAt, [outAt[0] + outDir[0] * R * 0.6, outAt[1] + outDir[1] * R * 0.6], [lerp(landOut[0], outAt[0], 0.55), low], landOut);
+      curve(landOut, [lerp(landOut[0], right[0], 0.45), low], [lerp(landOut[0], right[0], 0.55), mid], right);
+      dense.push(right);
 
-    const point = (st, t, u, band, x0, x1, tau, out) => {
-      const leave = smooth(span(t, 0.36, 0.94));
-      let x = x0 + (x1 - x0) * lerp(leave, t, u);
-      const fan = lerp(smooth(span(t, 0.4, 0.74)), 1, u);
-      let y = g.cy + st.r * band * fan;
-      const knot = (1 - smooth(span(t, 0.28, 0.6))) * (1 - u);
-      if (knot > 0.001) {
-        // Loops around one centre with a radius that breathes, which winds a round ball of yarn.
-        const turn = TAU * st.f1 * t + st.p1 + tau * 0.11;
-        const reach = g.R * (0.56 + 0.44 * Math.sin(TAU * st.f2 * t * 0.5 + st.p2 + tau * 0.06));
-        x += knot * reach * Math.cos(turn);
-        y += knot * reach * Math.sin(turn);
+      const run = new Float64Array(dense.length);
+      for (let i = 1; i < dense.length; i++) run[i] = run[i - 1] + Math.hypot(dense[i][0] - dense[i - 1][0], dense[i][1] - dense[i - 1][1]);
+      const total = run[dense.length - 1];
+      const ds = total / STEPS;
+      let k = 0;
+      let tieFrom = 0;
+      let fanFrom = STEPS;
+      for (let j = 0; j <= STEPS; j++) {
+        const aim = ds * j;
+        while (k < dense.length - 2 && run[k + 1] < aim) k++;
+        if (k >= knotFrom && !tieFrom) tieFrom = j;
+        if (k >= exitFrom && fanFrom === STEPS) fanFrom = j;
+        const f = clamp((aim - run[k]) / (run[k + 1] - run[k] || 1), 0, 1);
+        Cx[j] = lerp(dense[k][0], dense[k + 1][0], f);
+        Cy[j] = lerp(dense[k][1], dense[k + 1][1], f);
+        Sx[j] = lerp(-w * 0.06, w * 1.06, j / STEPS);
       }
-      if (hand.k > 0.004) {
-        const dx = x - hand.x;
-        const dy = y - hand.y;
-        const d2 = dx * dx + dy * dy;
-        if (d2 < 50000) {
-          const d = Math.sqrt(d2) + 0.001;
-          const push = Math.exp(-d2 / 12000) * 56 * hand.k;
-          x += (dx / d) * push;
-          y += (dy / d) * push;
+      for (let j = 0; j <= STEPS; j++) {
+        const a = Math.max(0, j - 1);
+        const b = Math.min(STEPS, j + 1);
+        const dx = Cx[b] - Cx[a];
+        const dy = Cy[b] - Cy[a];
+        const l = Math.hypot(dx, dy) || 1;
+        const fan = j >= fanFrom ? smooth(span(Cx[j], cx + R * 0.9, w * 1.02)) : 0;
+        const across = lerp(band, wideBand, fan);
+        Ox[j] = (-dy / l) * across;
+        Oy[j] = (dx / l) * across;
+        Tied[j] = smooth(Math.min(1, j / tieFrom, (STEPS - j) / (STEPS - fanFrom)));
+      }
+
+      const crossings = [];
+      for (let i = 0; i < STEPS; i++) {
+        for (let n = i + 6; n < STEPS; n++) {
+          const ax = Cx[i + 1] - Cx[i];
+          const ay = Cy[i + 1] - Cy[i];
+          const bx = Cx[n + 1] - Cx[n];
+          const by = Cy[n + 1] - Cy[n];
+          const d = ax * by - ay * bx;
+          if (!d) continue;
+          const ex = Cx[n] - Cx[i];
+          const ey = Cy[n] - Cy[i];
+          const u1 = (ex * by - ey * bx) / d;
+          const u2 = (ex * ay - ey * ax) / d;
+          if (u1 >= 0 && u1 < 1 && u2 >= 0 && u2 < 1) crossings.push([i + u1, n + u2]);
         }
       }
-      out[0] = x;
-      out[1] = y;
+      // Walking the band, it goes over, then under, then over: the weave that makes a knot read as one.
+      const gapPx = clamp(band * 0.1, 4, 11);
+      const near = (j, other) => {
+        const around = Math.ceil((band * 2) / ds);
+        let best = Infinity;
+        for (let n = Math.max(0, other - around); n <= Math.min(STEPS, other + around); n++) best = Math.min(best, Math.hypot(Cx[j] - Cx[n], Cy[j] - Cy[n]));
+        return best;
+      };
+      const passes = crossings.flatMap(([i, n]) => [{ j: i, other: Math.round(n) }, { j: n, other: Math.round(i) }]).sort((a, b) => a.j - b.j);
+      Under.fill(0);
+      bridges = [];
+      passes.forEach((pass, n) => {
+        const touching = (j) => near(j, pass.other) < band + gapPx;
+        let a = Math.floor(pass.j);
+        let b = Math.ceil(pass.j);
+        while (a > 1 && touching(a - 1)) a--;
+        while (b < STEPS - 2 && touching(b + 1)) b++;
+        if (n % 2 === 0) bridges.push([a, b]);
+        else for (let j = a; j <= b; j++) Under[j] = Math.max(Under[j], clamp(Math.min(j - a, b - j) / 3, 0, 1));
+      });
+      // Each stretch reaches toward a crossing it goes under, so it must be painted before the stretch on top
+      // there. Walking order gives that, except that the last one reaches the first, which it must precede.
+      bridges.unshift(bridges.pop());
+
+      // A bigger knot gets wider spacing and heavier lines, so it reads the same at every size.
+      const count = clamp(Math.round(band / (small ? 4.6 : 4 + R * 0.012)), 6, 24);
+      lines = Array.from({ length: count }, (_, i) => i / (count - 1) - 0.5);
+      chosen = Math.floor(count * 0.62);
+      g = { R, cx, cy, mid, band: wideBand, clear: 0.5 + gapPx / band, sway: R * 0.022, line: small ? 1 : clamp(R * 0.0075, 1.1, 1.6) };
     };
 
-    const scratch = [0, 0];
+    const measure = () => {
+      view = fit(canvas, 9e6);
+      root.style.setProperty('--say-h', `${say.offsetHeight}px`);
+      if (root.classList.contains('is-rest')) { tie(0, view.h); return; }
+      const a = root.querySelector('.opening__room').getBoundingClientRect();
+      const c = stage.getBoundingClientRect();
+      tie(a.top - c.top, Math.max(120, a.bottom - a.top));
+    };
+
     const paint = (t) => {
       if (!view || !g) return;
       now = t || now;
@@ -126,60 +224,153 @@
 
       const { ctx, w, h } = view;
       const p = s.p;
-      const u = smooth(span(p, 0, 0.42));
+      // The knot is pulled tight to a point, and only then does the band lie straight.
+      const pull = smooth(span(p, 0, 0.24));
+      const open = smooth(span(p, 0.2, 0.42));
       const wide = smooth(span(p, 0.3, 0.6));
       const fat = smooth(span(p, 0.52, 0.84));
       nav.classList.toggle('on-dark', fat > 0.7 && root.getBoundingClientRect().bottom > 0);
       ctx.clearRect(0, 0, w, h);
       const band = lerp(g.band, h * 1.08, wide);
-      const gap = band / COUNT;
-      const x0 = lerp(g.cx, -w * 0.06, u);
-      const x1 = w * 1.06;
-      const tau = now * 0.001;
+      const mid = lerp(g.mid, h / 2, wide);
       const limit = Math.max(1, Math.floor(STEPS * s.load));
-      ctx.lineJoin = 'round';
-      ctx.lineCap = 'round';
-      const trace = (st) => {
-        ctx.beginPath();
-        let px = 0;
-        let py = 0;
-        for (let j = 0; j <= limit; j++) {
-          point(st, j / STEPS, u, band, x0, x1, tau, scratch);
-          if (j === 0) ctx.moveTo(scratch[0], scratch[1]);
-          else ctx.quadraticCurveTo(px, py, (px + scratch[0]) / 2, (py + scratch[1]) / 2);
-          px = scratch[0];
-          py = scratch[1];
+      const tau = now * 0.001;
+      const sway = g.sway * (1 - wide);
+      const pointX = lerp(g.cx, w / 2, pull);
+      const pointY = lerp(g.cy, mid, pull);
+      for (let j = 0; j <= STEPS; j++) {
+        Dx[j] = sway * Math.sin(Cy[j] * 0.0045 + tau * 0.42);
+        Dy[j] = sway * Math.sin(Cx[j] * 0.0038 + tau * 0.36 + 1.7);
+      }
+      let px = 0;
+      let py = 0;
+      const at = (r, j) => {
+        const held = pull * Tied[j];
+        const rx = lerp(Cx[j], pointX, held) + r * Ox[j] * (1 - held);
+        const ry = lerp(Cy[j], pointY, held) + r * Oy[j] * (1 - held);
+        let x = lerp(rx, Sx[j], open) + Dx[j];
+        let y = lerp(ry, mid + r * band, open) + Dy[j];
+        if (hand.k > 0.004) {
+          const dx = x - hand.x;
+          const dy = y - hand.y;
+          const d2 = dx * dx + dy * dy;
+          if (d2 < 50000) {
+            const d = Math.sqrt(d2) + 0.001;
+            const push = Math.exp(-d2 / 12000) * 44 * hand.k;
+            x += (dx / d) * push;
+            y += (dy / d) * push;
+          }
         }
-        ctx.lineTo(px, py);
+        px = x;
+        py = y;
+      };
+      const trace = (r, a, b) => {
+        ctx.beginPath();
+        at(r, a);
+        let qx = px;
+        let qy = py;
+        if (a > 0) {
+          at(r, a - 1);
+          ctx.moveTo((qx + px) / 2, (qy + py) / 2);
+        } else ctx.moveTo(qx, qy);
+        for (let j = a + 1; j <= b; j++) {
+          at(r, j);
+          ctx.quadraticCurveTo(qx, qy, (qx + px) / 2, (qy + py) / 2);
+          qx = px;
+          qy = py;
+        }
+        if (b === limit) ctx.lineTo(qx, qy);
+      };
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'butt';
+      // The lines leave the knot black and arrive blue, the same turn the logo makes from E to Y.
+      const wash = ctx.createLinearGradient(g.cx + g.R, 0, w * 0.92, 0);
+      wash.addColorStop(0, '#111111');
+      wash.addColorStop(1, `rgb(${Math.round(lerp(0, 17, fat))},${Math.round(lerp(108, 17, fat))},${Math.round(lerp(255, 17, fat))})`);
+      const weight = lerp(g.line, band / (lines.length - 1) + 1.5, fat);
+      const ink = () => {
+        ctx.strokeStyle = wash;
+        ctx.lineWidth = weight;
+      };
+      const thread = (a, b) => {
+        trace(lines[chosen], a, b);
+        ctx.strokeStyle = '#006cff';
+        ctx.lineWidth = g.line * 1.9;
+        ctx.stroke();
       };
       if (fat >= 1) {
         ctx.fillStyle = '#111111';
         ctx.fillRect(0, 0, w, h);
       } else {
-        // The lines leave the knot black and arrive blue, the same turn the logo makes from E to Y.
-        const wash = ctx.createLinearGradient(g.cx + g.R * 0.4, 0, w * 0.86, 0);
-        wash.addColorStop(0, `rgba(17,17,17,${lerp(0.56, 1, fat)})`);
-        wash.addColorStop(1, `rgba(${Math.round(lerp(0, 17, fat))},${Math.round(lerp(108, 17, fat))},${Math.round(lerp(255, 17, fat))},${lerp(0.92, 1, fat)})`);
-        ctx.strokeStyle = wash;
-        ctx.lineWidth = lerp(1, gap + 1.5, fat);
-        strands.forEach((st, i) => {
-          if (i === CHOSEN) return;
-          trace(st);
+        ink();
+        lines.forEach((r) => {
+          trace(r, 0, limit);
           ctx.stroke();
         });
       }
       // One thread stays blue from the knot to the next chapter, with a signal running along it.
-      trace(strands[CHOSEN]);
-      ctx.strokeStyle = '#006cff';
-      ctx.lineWidth = 2.25;
-      ctx.stroke();
+      thread(0, limit);
+
+      // Where the band passes over itself, clear what lies under it and draw that stretch again on top.
+      if (pull < 1) {
+        // Just inside where a trace starts and stops, halfway between samples, so nothing is inked twice or left pale.
+        const seam = (r, j, f) => {
+          at(r, j);
+          const x = px;
+          const y = py;
+          at(r, j + 1);
+          px = lerp(x, px, f);
+          py = lerp(y, py, f);
+        };
+        const edge = g.clear;
+        bridges.forEach(([a, b]) => {
+          if (a >= limit) return;
+          const end = Math.min(b, limit - 1);
+          ctx.globalCompositeOperation = 'destination-out';
+          ctx.beginPath();
+          seam(edge, a - 1, 0.56);
+          ctx.moveTo(px, py);
+          for (let j = a; j <= end; j++) { at(edge, j); ctx.lineTo(px, py); }
+          seam(edge, end, 0.44);
+          ctx.lineTo(px, py);
+          seam(-edge, end, 0.44);
+          ctx.lineTo(px, py);
+          for (let j = end; j >= a; j--) { at(-edge, j); ctx.lineTo(px, py); }
+          seam(-edge, a - 1, 0.56);
+          ctx.lineTo(px, py);
+          ctx.closePath();
+          ctx.fill();
+          ctx.globalCompositeOperation = 'source-over';
+          ink();
+          lines.forEach((r) => {
+            trace(r, a, end + 1);
+            ctx.stroke();
+          });
+          thread(a, end + 1);
+        });
+      }
+
       if (s.load >= 1 && !calm()) {
-        const travel = 0.42 + ((now * 0.00011) % 1) * 0.58;
-        point(strands[CHOSEN], travel, u, band, x0, x1, tau, scratch);
-        ctx.fillStyle = '#006cff';
-        ctx.beginPath();
-        ctx.arc(scratch[0], scratch[1], 5, 0, TAU);
-        ctx.fill();
+        const travel = ((now * 0.00007) % 1) * STEPS;
+        const j = Math.min(STEPS - 1, Math.floor(travel));
+        const size = 1 - Math.max(Under[j], Under[j + 1]) * (1 - pull);
+        if (size > 0.02) {
+          at(lines[chosen], j);
+          const ax = px;
+          const ay = py;
+          at(lines[chosen], j + 1);
+          const dotX = lerp(ax, px, travel - j);
+          const dotY = lerp(ay, py, travel - j);
+          ctx.globalCompositeOperation = 'destination-out';
+          ctx.beginPath();
+          ctx.arc(dotX, dotY, lerp(8, 4.5, fat) * size, 0, TAU);
+          ctx.fill();
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.fillStyle = '#006cff';
+          ctx.beginPath();
+          ctx.arc(dotX, dotY, 4.5 * size, 0, TAU);
+          ctx.fill();
+        }
       }
     };
 
@@ -201,14 +392,13 @@
         s.p = 0;
         s.load = 1;
         measure();
-        g = { cx: view.w * (small ? 0.4 : 0.31), cy: view.h / 2, R: Math.min(view.h * 0.46, view.w * 0.2), band: view.h * 0.8 };
         paint(1);
       },
     });
 
     if (root.classList.contains('is-live')) {
       ScrollTrigger.addEventListener('refresh', () => { measure(); paint(); });
-      gsap.to(s, { load: 1, duration: 1.3, ease: 'power2.inOut' });
+      gsap.to(s, { load: 1, duration: 2, ease: 'power2.inOut' });
       whileVisible(stage, paint);
       addEventListener('pointermove', (e) => {
         if (e.pointerType !== 'mouse') return;
