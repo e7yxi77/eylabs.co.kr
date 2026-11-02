@@ -1,6 +1,7 @@
 :root {
   --bg: #ffffff;
   --surface: #f4f4f4;
+  --tint: #e3edff;
   --ink: #1d1d1d;
   --muted: #6b6b6b;
   --accent: #006cff;
@@ -122,6 +123,8 @@ button { font: inherit; }
 .nav[data-tone="dark"] :focus-visible, .nav.on-dark :focus-visible { outline-color: var(--signal); }
 .nav[data-tone="accent"] :focus-visible { outline-color: #ffffff; }
 .logo { --logo-ink: var(--ink); --logo-blue: var(--accent); display: block; width: auto; }
+.nav[data-tone="pale"] { --nav-ground: var(--surface); }
+.nav[data-tone="tint"] { --nav-ground: var(--tint); }
 .nav[data-tone="accent"] { --nav-ground: var(--accent); color: var(--accent-ink); }
 .nav[data-tone="accent"] .button { background: var(--accent-ink); color: var(--accent); }
 .nav[data-tone="accent"] .logo { --logo-ink: #ffffff; --logo-blue: #ffffff; }
@@ -138,7 +141,9 @@ button { font: inherit; }
   text-decoration-thickness: 2px;
   transition: text-decoration-color var(--t-hover) ease;
 }
-.nav__links a:hover { text-decoration-color: currentColor; }
+@media (hover: hover) and (pointer: fine) {
+  .nav__links a:hover { text-decoration-color: currentColor; }
+}
 /* On a phone the links fold into a plain disclosure, which also works with no script. */
 .nav__menu { display: none; }
 .nav__menu summary { list-style: none; user-select: none; }
@@ -239,16 +244,18 @@ html.js .opening:not(.is-rest) .opening__claim { color: var(--field-1-ink); opac
 .why.is-live .why__count { display: inline; color: var(--field-1-ink); }
 
 /* What: the four lines of work as sheets that slide up over one another. Each leaves its name showing, like tabbed folders. */
-/* Chapters. Each white one rises over the last on a rounded edge and opens on a rule; each coloured one starts on the same edge. */
-.what, .projects, .contact { position: relative; z-index: 1; margin-top: calc(-1 * var(--radius)); border-radius: var(--radius) var(--radius) 0 0; background: var(--bg); }
-.flow, .record, .foot { border-radius: var(--radius) var(--radius) 0 0; }
-.what > .head, .projects > .head, .tool__top { margin-inline: var(--margin); padding-top: clamp(20px, 2.4vw, 36px); border-top: 2px solid var(--ink); }
+/* Chapters. Each has its own ground and rises over the last on a rounded edge, so no two read as one. */
+.what, .tool, .flow, .pushed, .projects, .record, .contact, .foot { position: relative; z-index: 1; margin-top: calc(-1 * var(--radius)); border-radius: var(--radius) var(--radius) 0 0; }
+.what, .projects { background: var(--surface); }
+.tool { background: var(--tint); }
+.pushed, .contact { background: var(--bg); }
+.what > .head, .projects > .head { padding-inline: var(--margin); }
 .what { padding-block: var(--gap); }
 .what__list { --tab: clamp(64px, 9.5svh, 96px); margin-top: clamp(32px, 4.4vw, 64px); }
-.nav:not(.is-away) ~ main .sheet, .nav:not(.is-away) ~ main .rec__panel .head, .nav:not(.is-away) ~ main .rec__dots { --stick: var(--nav); }
-.sheet { position: sticky; top: calc(var(--stick, 0px) + var(--i) * var(--tab)); transition: top 300ms var(--ease-out); display: flex; flex-direction: column; min-height: calc(100svh - var(--i) * var(--tab)); padding: 0 var(--margin) clamp(24px, 3svh, 40px); border-radius: var(--radius) var(--radius) 0 0; }
+.nav:not(.is-away) ~ main .rec__panel .head, .nav:not(.is-away) ~ main .rec__dots { --stick: var(--nav); }
+.sheet { position: sticky; top: calc(var(--nav) + var(--i) * var(--tab)); display: flex; flex-direction: column; min-height: calc(100svh - var(--nav) - var(--i) * var(--tab)); box-shadow: 0 -10px 36px rgba(0, 0, 0, 0.1); padding: 0 var(--margin) clamp(24px, 3svh, 40px); border-radius: var(--radius) var(--radius) 0 0; }
 .sheet--blue { background: var(--accent); color: var(--accent-ink); }
-.sheet--pale { background: var(--surface); color: var(--ink); }
+.sheet--pale { background: var(--bg); color: var(--ink); }
 .sheet--ink { background: var(--field-1); color: var(--field-1-ink); }
 .sheet--blue :focus-visible, .sheet--ink :focus-visible { outline-color: #ffffff; }
 .sheet__name { display: flex; align-items: center; min-height: var(--tab); margin: 0; font-size: var(--step-name); font-weight: 600; line-height: 1.1; letter-spacing: -0.035em; }
@@ -261,9 +268,10 @@ html.js .sheet__art { display: block; position: relative; min-height: 200px; }
 .what__more { display: flex; flex-wrap: wrap; gap: 4px 20px; margin-top: auto; }
 .what__more a { font-weight: 600; text-underline-offset: 0.2em; text-decoration-thickness: 2px; }
 /* Each sheet holds for a while before the next one rises. */
-.sheet + .sheet { margin-top: 50svh; }
+.sheet + .sheet { margin-top: 30svh; }
 /* A link in a stuck sheet can sit under the next one, so while the keyboard is in the list the sheets lie flat. */
-.what__list:has(a:focus-visible) .sheet { position: relative; top: auto; margin-top: 0; }
+.what__list:has(a:focus-visible) .sheet { position: relative; top: auto; margin-top: 0; transform: none !important; }
+.what__list:has(a:focus-visible) .sheet__body { opacity: 1 !important; }
 
 /* Path: one line changes from a tangle into a plan, a made thing, and a rising business. */
 .path { background: var(--field-1); color: var(--field-1-ink); }
@@ -306,28 +314,18 @@ html.js .path.is-live canvas { position: absolute; inset: 0; height: 100%; margi
   .pushed__line { color: var(--bg); -webkit-text-stroke: 3px #c4c4c4; paint-order: stroke fill; }
 }
 
-/* Tool: three fields side by side, and one thread that crosses all of them without a break. */
-.tool { padding-bottom: var(--gap); }
-.tool__top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 12px var(--gutter); }
-.tool__note { color: var(--muted); }
+/* Tool: one quiet field. A single thread runs under three short statements. */
+.tool { padding-block: var(--gap); }
+.tool__top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 12px var(--gutter); padding-inline: var(--margin); }
+.tool__note { color: #4c5566; }
 .tool__strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: clamp(32px, 4.4vw, 64px); }
-.tool__step { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; min-height: clamp(560px, 86svh, 860px); padding-block: clamp(20px, 2.4vw, 36px); }
-.tool__step--ink { background: var(--field-1); color: var(--field-1-ink); }
-.tool__step--blue { background: var(--accent); color: var(--accent-ink); }
-.tool__step--pale { background: var(--surface); color: var(--ink); }
-.tool__verb { margin: 0; padding-inline: var(--margin); font-size: var(--step-head); font-weight: 600; line-height: 1.1; letter-spacing: -0.04em; }
+.tool__verb { margin: 0; padding-inline: var(--margin); font-size: var(--step-name); font-weight: 600; line-height: 1.1; letter-spacing: -0.035em; }
 .tool__plot { display: none; }
 /* Absolute, so a canvas resized to its box can never push that box taller. */
-html.js .tool__plot { display: block; position: relative; min-height: 200px; margin-block: clamp(16px, 2vw, 28px); }
+html.js .tool__plot { display: block; position: relative; height: clamp(180px, 30svh, 300px); margin-block: clamp(16px, 2vw, 28px); }
 .tool__plot canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
-.tool__say { display: grid; align-content: start; gap: 8px; min-height: 6.6em; padding-inline: var(--margin); }
+.tool__say { display: grid; align-content: start; gap: 8px; padding-inline: var(--margin); }
 .tool__read { font-size: 1rem; font-weight: 600; font-variant-numeric: tabular-nums; }
-
-@media (min-width: 1024px) and (min-height: 701px) and (prefers-reduced-motion: no-preference) {
-  html.js:not(.big-type) .tool__hold { --tool-h: clamp(560px, 86svh, 860px); height: calc(var(--tool-h) + 220svh); margin-top: clamp(32px, 4.4vw, 64px); }
-  html.js:not(.big-type) .tool__hold .tool__strip { position: sticky; top: calc((100svh - var(--tool-h)) / 2); margin-top: 0; }
-  html.js:not(.big-type) .tool__hold .tool__step { height: var(--tool-h); }
-}
 
 /* Segmented control */
 [data-ui].segment {
@@ -409,15 +407,15 @@ html.js .tool__plot { display: block; position: relative; min-height: 200px; mar
 
 /* Projects: what got built, each shown on the company's dot display, in the three fields the page already uses. */
 .projects { padding-block: var(--gap); }
-.projects__list { margin-top: clamp(32px, 4.4vw, 64px); }
-.project { display: grid; grid-template-columns: minmax(0, 1fr); }
+.projects__list { display: grid; gap: clamp(16px, 2vw, 28px); margin: clamp(32px, 4.4vw, 64px) var(--margin) 0; }
+.project { display: grid; grid-template-columns: minmax(0, 1fr); overflow: clip; border-radius: var(--radius); background: var(--bg); }
 .project__view { display: none; }
 html.js .project__view { display: block; position: relative; min-height: clamp(240px, 40svh, 420px); }
 .project__view canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 .project--ink .project__view { background: var(--field-1); }
 .project--blue .project__view { background: var(--accent); }
 .project--pale .project__view { background: var(--surface); }
-.project__body { display: grid; grid-template-columns: minmax(0, 1fr); justify-items: start; gap: clamp(14px, 1.6vw, 22px); padding: clamp(24px, 3.4vw, 56px) var(--margin) clamp(40px, 5vw, 80px); }
+.project__body { display: grid; grid-template-columns: minmax(0, 1fr); justify-items: start; gap: clamp(14px, 1.6vw, 22px); padding: clamp(24px, 3.4vw, 56px) clamp(20px, 3vw, 48px) clamp(32px, 4vw, 64px); }
 .project__name { display: flex; flex-wrap: wrap; align-items: center; gap: 0.28em; margin: 0; overflow-wrap: anywhere; font-size: var(--step-name); font-weight: 600; line-height: 1.1; letter-spacing: -0.035em; }
 .project__logo { flex: none; width: auto; height: 1.1em; }
 .logos { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -491,6 +489,17 @@ html.js .rec__desc a { scroll-margin-top: calc(var(--step-head) * 1.1 + 8px + cl
 [data-ui].rec__ring i { position: absolute; inset: 0; display: block; background: #ffffff; opacity: 0.2; transform: scaleX(0); transform-origin: left center; }
 [data-ui].rec__mark { z-index: 0; display: none; background: #ffffff; }
 html:not(.js) [data-ui].rec__ring { display: none; }
+
+/* Without a pointer: a folded list, one tap per item, like the questions on a help page. */
+.rec__more { display: none; }
+.record.is-fold .record__hint, html.js .record.is-fold .rec__dots, html.js .record.is-fold [data-ui].rec__ring { display: none; }
+html.js .record.is-fold .rec__panel .head { position: static; }
+.record.is-fold .rec__panel .segment { margin-block: 20px 28px; }
+.record.is-fold .rec__row { position: relative; padding-right: 56px; border-bottom: 1px solid rgba(255, 255, 255, 0.35); cursor: pointer; }
+.record.is-fold .rec__desc { display: none; }
+.record.is-fold .rec.is-open .rec__desc { display: block; }
+.record.is-fold .rec__more { position: absolute; top: 8px; right: 0; display: block; width: 48px; height: 48px; border: 0; background: linear-gradient(#fff, #fff) center / 16px 2px no-repeat, linear-gradient(#fff, #fff) center / 2px 16px no-repeat; cursor: pointer; transition: transform var(--t-hover) var(--ease-out); }
+.record.is-fold .rec.is-open .rec__more { transform: rotate(45deg); }
 
 @media (min-width: 1024px) and (hover: hover) and (pointer: fine) {
   html.js .hint-wide { display: inline; }
@@ -578,10 +587,7 @@ html.js .contact__weave { display: block; width: 100%; height: clamp(180px, 36sv
   .why.is-live .why__to { left: var(--margin); }
   .sheet__body { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(180px, 1fr); }
   .what__more { margin-top: 0; }
-  .tool__strip { grid-template-columns: minmax(0, 1fr); }
-  .tool__step { min-height: 0; padding-block: 44px; }
-  html.js .tool__plot { height: clamp(200px, 34svh, 320px); }
-  .tool__say { min-height: 0; }
+  .tool__strip { grid-template-columns: minmax(0, 1fr); gap: 56px; }
   .reach { grid-auto-flow: row; grid-template-columns: minmax(0, 1fr); grid-template-rows: none; }
 }
 
@@ -590,8 +596,10 @@ html.js .contact__weave { display: block; width: 100%; height: clamp(180px, 36sv
 }
 
 /* A short window cannot hold a sheet, or a sticky title and display on top of the list, so they all scroll normally. */
-@media (max-height: 700px) {
+@media (max-height: 560px) {
   .sheet, .sheet + .sheet { position: relative; top: auto; min-height: 0; margin-top: 0; }
+}
+@media (max-height: 700px) {
   html.js .rec__panel .head, html.js .rec__dots { position: static; }
   html.js .rec__desc a { scroll-margin-top: 0; }
 }
@@ -645,6 +653,8 @@ button, summary, .button { -webkit-user-select: none; user-select: none; -webkit
   .why__row { grid-template-columns: minmax(0, 1fr); }
   .what__list { --tab: 56px; }
   .sheet__name { font-size: min(6vw, 1.625rem); }
+  .sheet__body { grid-template-rows: auto minmax(0, 1fr); }
+  html.js .sheet__art { min-height: 0; }
   .project__facts { grid-template-columns: minmax(0, 1fr); }
   .project__facts div:nth-child(2) { grid-row: auto; grid-column: auto; }
   .record .segment button { padding-inline: 4px; }
@@ -661,6 +671,6 @@ button, summary, .button { -webkit-user-select: none; user-select: none; -webkit
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  .nav, .button, .segment__thumb, .sheet, html.js .rec__panel .head, html.js .rec__dots { transition: none; }
+  .nav, .button, .segment__thumb, html.js .rec__panel .head, html.js .rec__dots { transition: none; }
   .pushed__line { white-space: normal; width: auto; }
 }
