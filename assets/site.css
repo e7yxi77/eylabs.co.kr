@@ -235,12 +235,15 @@ html.js .opening:not(.is-rest) .opening__claim { color: var(--field-1-ink); opac
 .why.is-live .why__to { position: absolute; inset: calc(50% + var(--clear)) var(--margin) auto 42%; }
 .why.is-live .why__pain, .why.is-live .why__fix { margin-bottom: 0.2em; font-size: var(--step-head); line-height: 1.1; letter-spacing: -0.04em; }
 .why.is-live .why__from > p, .why.is-live .why__to > p:last-child { font-size: var(--step-lead); font-weight: 500; line-height: 1.4; letter-spacing: -0.025em; text-wrap: pretty; }
-.why.is-live .why__note { position: absolute; inset: auto var(--margin) calc(clamp(16px, 3svh, 32px) + env(safe-area-inset-bottom, 0px)); margin: 0; }
+.why.is-live .why__note { position: absolute; inset: auto var(--margin) calc(var(--radius) + clamp(16px, 3svh, 32px) + env(safe-area-inset-bottom, 0px)); margin: 0; }
 .why.is-live .why__count { display: inline; color: var(--field-1-ink); }
 
 /* What: the four lines of work as sheets that slide up over one another. Each leaves its name showing, like tabbed folders. */
-.what { padding-top: var(--gap); }
-.what > .head { padding-inline: var(--margin); }
+/* Chapters. Each white one rises over the last on a rounded edge and opens on a rule; each coloured one starts on the same edge. */
+.what, .projects, .contact { position: relative; z-index: 1; margin-top: calc(-1 * var(--radius)); border-radius: var(--radius) var(--radius) 0 0; background: var(--bg); }
+.flow, .record, .foot { border-radius: var(--radius) var(--radius) 0 0; }
+.what > .head, .projects > .head, .tool__top { margin-inline: var(--margin); padding-top: clamp(20px, 2.4vw, 36px); border-top: 2px solid var(--ink); }
+.what { padding-block: var(--gap); }
 .what__list { --tab: clamp(64px, 9.5svh, 96px); margin-top: clamp(32px, 4.4vw, 64px); }
 .nav:not(.is-away) ~ main .sheet, .nav:not(.is-away) ~ main .rec__panel .head, .nav:not(.is-away) ~ main .rec__dots { --stick: var(--nav); }
 .sheet { position: sticky; top: calc(var(--stick, 0px) + var(--i) * var(--tab)); transition: top 300ms var(--ease-out); display: flex; flex-direction: column; min-height: calc(100svh - var(--i) * var(--tab)); padding: 0 var(--margin) clamp(24px, 3svh, 40px); border-radius: var(--radius) var(--radius) 0 0; }
@@ -257,8 +260,10 @@ html.js .sheet__art { display: block; position: relative; min-height: 200px; }
 .what__items { display: grid; gap: 6px; font-weight: 500; line-height: 1.45; }
 .what__more { display: flex; flex-wrap: wrap; gap: 4px 20px; margin-top: auto; }
 .what__more a { font-weight: 600; text-underline-offset: 0.2em; text-decoration-thickness: 2px; }
+/* Each sheet holds for a while before the next one rises. */
+.sheet + .sheet { margin-top: 50svh; }
 /* A link in a stuck sheet can sit under the next one, so while the keyboard is in the list the sheets lie flat. */
-.what__list:has(a:focus-visible) .sheet { position: relative; top: auto; }
+.what__list:has(a:focus-visible) .sheet { position: relative; top: auto; margin-top: 0; }
 
 /* Path: one line changes from a tangle into a plan, a made thing, and a rising business. */
 .path { background: var(--field-1); color: var(--field-1-ink); }
@@ -294,7 +299,7 @@ html.js .path.is-live canvas { position: absolute; inset: 0; height: 100%; margi
 .path.is-live .path__note[aria-hidden="true"] { display: block; }
 
 /* A line of type that the scroll pushes sideways. */
-.pushed { overflow: clip; padding-block: clamp(48px, 7vw, 104px); }
+.pushed { overflow: clip; padding-block: clamp(64px, 9vw, 136px); }
 .pushed__line { padding-inline: var(--margin); white-space: nowrap; width: max-content; color: #e6e6e6; will-change: transform; }
 /* The face's letters are built from overlapping parts, so the fill paints over the inner half of the stroke. */
 @supports (paint-order: stroke fill) {
@@ -302,8 +307,8 @@ html.js .path.is-live canvas { position: absolute; inset: 0; height: 100%; margi
 }
 
 /* Tool: three fields side by side, and one thread that crosses all of them without a break. */
-.tool { padding-top: clamp(64px, 6vw, 96px); }
-.tool__top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 12px var(--gutter); padding-inline: var(--margin); }
+.tool { padding-bottom: var(--gap); }
+.tool__top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 12px var(--gutter); }
 .tool__note { color: var(--muted); }
 .tool__strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: clamp(32px, 4.4vw, 64px); }
 .tool__step { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; min-height: clamp(560px, 86svh, 860px); padding-block: clamp(20px, 2.4vw, 36px); }
@@ -317,6 +322,12 @@ html.js .tool__plot { display: block; position: relative; min-height: 200px; mar
 .tool__plot canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 .tool__say { display: grid; align-content: start; gap: 8px; min-height: 6.6em; padding-inline: var(--margin); }
 .tool__read { font-size: 1rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+@media (min-width: 1024px) and (min-height: 701px) and (prefers-reduced-motion: no-preference) {
+  html.js:not(.big-type) .tool__hold { --tool-h: clamp(560px, 86svh, 860px); height: calc(var(--tool-h) + 220svh); margin-top: clamp(32px, 4.4vw, 64px); }
+  html.js:not(.big-type) .tool__hold .tool__strip { position: sticky; top: calc((100svh - var(--tool-h)) / 2); margin-top: 0; }
+  html.js:not(.big-type) .tool__hold .tool__step { height: var(--tool-h); }
+}
 
 /* Segmented control */
 [data-ui].segment {
@@ -397,8 +408,7 @@ html.js .tool__plot { display: block; position: relative; min-height: 200px; mar
 }
 
 /* Projects: what got built, each shown on the company's dot display, in the three fields the page already uses. */
-.projects { padding-top: var(--gap); }
-.projects > .head { padding-inline: var(--margin); }
+.projects { padding-block: var(--gap); }
 .projects__list { margin-top: clamp(32px, 4.4vw, 64px); }
 .project { display: grid; grid-template-columns: minmax(0, 1fr); }
 .project__view { display: none; }
@@ -502,7 +512,7 @@ html:not(.js) [data-ui].rec__ring { display: none; }
 }
 
 /* Contact: two sets of lines meet and interlock above the ways to reach the company. */
-.contact { padding-block: clamp(64px, 8vw, 120px); }
+.contact { padding-block: clamp(72px, 9vw, 136px); }
 .contact__weave { display: none; }
 html.js .contact__weave { display: block; width: 100%; height: clamp(180px, 36svh, 380px); touch-action: pan-y; }
 .contact__body { margin-top: clamp(40px, 5vw, 72px); padding-inline: var(--margin); }
@@ -581,12 +591,12 @@ html.js .contact__weave { display: block; width: 100%; height: clamp(180px, 36sv
 
 /* A short window cannot hold a sheet, or a sticky title and display on top of the list, so they all scroll normally. */
 @media (max-height: 700px) {
-  .sheet { position: relative; top: auto; min-height: 0; }
+  .sheet, .sheet + .sheet { position: relative; top: auto; min-height: 0; margin-top: 0; }
   html.js .rec__panel .head, html.js .rec__dots { position: static; }
   html.js .rec__desc a { scroll-margin-top: 0; }
 }
 /* The same when the visitor has set larger text in the browser. The scenes rest then too (stage.js). */
-html.big-type .sheet { position: relative; top: auto; min-height: 0; }
+html.big-type .sheet, html.big-type .sheet + .sheet { position: relative; top: auto; min-height: 0; margin-top: 0; }
 html.big-type .rec__panel, html.big-type .rec__panel .head, html.big-type .rec__dots { position: static; }
 html.big-type .rec__desc a { scroll-margin-top: 0; }
 html.big-type .record .segment { display: flex; flex-wrap: wrap; gap: 8px; border-radius: 28px; }

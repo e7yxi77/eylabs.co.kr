@@ -47,7 +47,7 @@
 
   window.Scenes = window.Scenes || {};
 
-  /* Opening: one band of parallel lines with a knot tied in it. The scroll pulls the knot tight, the band lies
+  /* Opening: one band of parallel lines with a single loop in it. The scroll pulls the loop tight, the band lies
      straight, and its lines thicken until they close over the page, which is how the white opening hands over
      to the black chapter. */
   Scenes.opening = (root, o = {}) => {
@@ -68,18 +68,15 @@
     const Dx = new Float32Array(STEPS + 1);
     const Dy = new Float32Array(STEPS + 1);
     const Tied = new Float32Array(STEPS + 1);
-    const Under = new Float32Array(STEPS + 1);
     const s = { p: 0, load: 0 };
-    const hand = { x: 0, y: 0, aimX: 0, aimY: 0, k: 0, aim: 0 };
     let view = null;
     let g = null;
     let lines = [];
     let chosen = 0;
     let bridges = [];
     let now = 0;
-    let last = 0;
 
-    // A trefoil in two turns with its lowest lobe opened, so both ends can run out to the edges of the page.
+    // One round loop, open at the bottom, so both ends can run out to the edges of the page.
     const tie = (top, tall) => {
       small = isPhone();
       const { w } = view;
@@ -89,8 +86,7 @@
       const cy = top + tall / 2 - R * 0.42;
       const low = cy + R * 1.68;
       const rose = (a) => {
-        const r = 0.765 + 0.235 * Math.cos(1.5 * a);
-        return [cx + R * r * Math.sin(a), cy + R * r * Math.cos(a)];
+        return [cx + R * Math.sin(a), cy + R * Math.cos(a)];
       };
       const heading = (a) => {
         const p = rose(a - 0.001);
@@ -112,8 +108,8 @@
       const JOIN = 0.34;
       const inAt = rose(JOIN);
       const inDir = heading(JOIN);
-      const outAt = rose(TAU * 2 - JOIN);
-      const outDir = heading(TAU * 2 - JOIN);
+      const outAt = rose(TAU - JOIN);
+      const outDir = heading(TAU - JOIN);
       // The band leaves as far up and as wide as the width left to the right of the knot allows.
       const reach = Math.min(R * 1.5, (w * 1.06 - cx) * 0.62);
       const free = w * 1.06 - (cx + reach);
@@ -126,7 +122,7 @@
       curve(left, [lerp(left[0], landIn[0], 0.33), low], [lerp(left[0], landIn[0], 0.67), low], landIn);
       curve(landIn, [lerp(landIn[0], inAt[0], 0.55), low], [inAt[0] - inDir[0] * R * 0.6, inAt[1] - inDir[1] * R * 0.6], inAt);
       const knotFrom = dense.length;
-      for (let i = 0; i < 1400; i++) dense.push(rose(JOIN + ((TAU * 2 - JOIN * 2) * i) / 1400));
+      for (let i = 0; i < 1400; i++) dense.push(rose(JOIN + ((TAU - JOIN * 2) * i) / 1400));
       const exitFrom = dense.length;
       curve(outAt, [outAt[0] + outDir[0] * R * 0.6, outAt[1] + outDir[1] * R * 0.6], [lerp(landOut[0], outAt[0], 0.55), low], landOut);
       curve(landOut, [lerp(landOut[0], right[0], 0.45), low], [lerp(landOut[0], right[0], 0.55), mid], right);
@@ -178,7 +174,7 @@
           if (u1 >= 0 && u1 < 1 && u2 >= 0 && u2 < 1) crossings.push([i + u1, n + u2]);
         }
       }
-      // Walking the band, it goes over, then under, then over: the weave that makes a knot read as one.
+      // Where the band meets itself, one pass goes over and the other under.
       const gapPx = clamp(band * 0.1, 4, 11);
       const near = (j, other) => {
         const around = Math.ceil((band * 2) / ds);
@@ -187,7 +183,6 @@
         return best;
       };
       const passes = crossings.flatMap(([i, n]) => [{ j: i, other: Math.round(n) }, { j: n, other: Math.round(i) }]).sort((a, b) => a.j - b.j);
-      Under.fill(0);
       bridges = [];
       passes.forEach((pass, n) => {
         const touching = (j) => near(j, pass.other) < band + gapPx;
@@ -196,17 +191,16 @@
         while (a > 1 && touching(a - 1)) a--;
         while (b < STEPS - 2 && touching(b + 1)) b++;
         if (n % 2 === 0) bridges.push([a, b]);
-        else for (let j = a; j <= b; j++) Under[j] = Math.max(Under[j], clamp(Math.min(j - a, b - j) / 3, 0, 1));
       });
       // Each stretch reaches toward a crossing it goes under, so it must be painted before the stretch on top
       // there. Walking order gives that, except that the last one reaches the first, which it must precede.
       if (bridges.length) bridges.unshift(bridges.pop());
 
-      // A bigger knot gets wider spacing and heavier lines, so it reads the same at every size.
-      const count = clamp(Math.round(band / (small ? 4.6 : 4 + R * 0.012)), 6, 24);
+      // Few lines, widely spaced: the band should read at a glance.
+      const count = clamp(Math.round(band / (small ? 7 : 9)), 5, 11);
       lines = Array.from({ length: count }, (_, i) => i / (count - 1) - 0.5);
       chosen = Math.floor(count * 0.62);
-      g = { R, cx, cy, mid, band: wideBand, clear: 0.5 + gapPx / band, sway: R * 0.022, line: small ? 1 : clamp(R * 0.0075, 1.1, 1.6) };
+      g = { R, cx, cy, mid, band: wideBand, clear: 0.5 + gapPx / band, sway: R * 0.022, line: small ? 1.25 : 1.6 };
     };
 
     const measure = () => {
@@ -221,15 +215,9 @@
     const paint = (t) => {
       if (!view || !g) return;
       now = t || now;
-      const dt = last ? clamp((now - last) / 1000, 0, 0.05) : 0;
-      last = now;
-      hand.x += (hand.aimX - hand.x) * Math.min(1, dt * 9);
-      hand.y += (hand.aimY - hand.y) * Math.min(1, dt * 9);
-      hand.k += (hand.aim - hand.k) * Math.min(1, dt * 5);
-
       const { ctx, w, h } = view;
       const p = s.p;
-      // The knot is pulled tight to a point, and only then does the band lie straight.
+      // The loop is pulled tight to a point, and only then does the band lie straight.
       const pull = smooth(span(p, 0, 0.24));
       const open = smooth(span(p, 0.2, 0.42));
       const wide = smooth(span(p, 0.3, 0.6));
@@ -253,21 +241,8 @@
         const held = pull * Tied[j];
         const rx = lerp(Cx[j], pointX, held) + r * Ox[j] * (1 - held);
         const ry = lerp(Cy[j], pointY, held) + r * Oy[j] * (1 - held);
-        let x = lerp(rx, Sx[j], open) + Dx[j];
-        let y = lerp(ry, mid + r * band, open) + Dy[j];
-        if (hand.k > 0.004) {
-          const dx = x - hand.x;
-          const dy = y - hand.y;
-          const d2 = dx * dx + dy * dy;
-          if (d2 < 50000) {
-            const d = Math.sqrt(d2) + 0.001;
-            const push = Math.exp(-d2 / 12000) * 44 * hand.k;
-            x += (dx / d) * push;
-            y += (dy / d) * push;
-          }
-        }
-        px = x;
-        py = y;
+        px = lerp(rx, Sx[j], open) + Dx[j];
+        py = lerp(ry, mid + r * band, open) + Dy[j];
       };
       const trace = (r, a, b) => {
         ctx.beginPath();
@@ -313,7 +288,7 @@
           ctx.stroke();
         });
       }
-      // One thread stays blue from the knot to the next chapter, with a signal running along it.
+      // One thread stays blue from the loop to the next chapter.
       thread(0, limit);
 
       // Where the band passes over itself, clear what lies under it and draw that stretch again on top.
@@ -354,34 +329,11 @@
           thread(a, end + 1);
         });
       }
-
-      if (s.load >= 1 && !calm()) {
-        const travel = ((now * 0.00007) % 1) * STEPS;
-        const j = Math.min(STEPS - 1, Math.floor(travel));
-        const size = 1 - Math.max(Under[j], Under[j + 1]) * (1 - pull);
-        if (size > 0.02) {
-          at(lines[chosen], j);
-          const ax = px;
-          const ay = py;
-          at(lines[chosen], j + 1);
-          const dotX = lerp(ax, px, travel - j);
-          const dotY = lerp(ay, py, travel - j);
-          ctx.globalCompositeOperation = 'destination-out';
-          ctx.beginPath();
-          ctx.arc(dotX, dotY, lerp(8, 4.5, fat) * size, 0, TAU);
-          ctx.fill();
-          ctx.globalCompositeOperation = 'source-over';
-          ctx.fillStyle = '#006cff';
-          ctx.beginPath();
-          ctx.arc(dotX, dotY, 4.5 * size, 0, TAU);
-          ctx.fill();
-        }
-      }
     };
 
     const mm = Stage.scene(root, {
-      hold: o.hold ?? 1.9,
-      scrub: Stage.lenis ? true : 0.3,
+      hold: o.hold ?? 3.4,
+      scrub: 0.6,
       build(tl, { q }) {
         measure();
         tl.to(s, { p: 1, duration: 0.84, ease: 'none', onUpdate: () => paint() }, 0);
@@ -406,25 +358,6 @@
       ScrollTrigger.addEventListener('refresh', () => { measure(); paint(); });
       gsap.to(s, { load: 1, duration: 2, ease: 'power2.inOut' });
       whileVisible(stage, paint);
-      addEventListener('pointermove', (e) => {
-        if (e.pointerType !== 'mouse') return;
-        const r = stage.getBoundingClientRect();
-        if (e.clientY > r.bottom || e.clientY < r.top) { hand.aim = 0; return; }
-        hand.aimX = e.clientX;
-        hand.aimY = e.clientY - r.top;
-        if (hand.aim === 0) { hand.x = hand.aimX; hand.y = hand.aimY; }
-        hand.aim = 1;
-      }, { passive: true });
-      document.addEventListener('pointerleave', () => { hand.aim = 0; });
-      stage.addEventListener('pointerdown', (e) => {
-        if (e.pointerType === 'mouse') return;
-        const r = stage.getBoundingClientRect();
-        hand.x = hand.aimX = e.clientX;
-        hand.y = hand.aimY = e.clientY - r.top;
-        hand.aim = 1;
-        hand.k = 1;
-        setTimeout(() => { hand.aim = 0; }, 260);
-      }, { passive: true });
     }
     return mm;
   };
@@ -474,8 +407,8 @@
     };
     const resize = () => { view = fit(canvas); paint(); };
     const mm = Stage.scene(root, {
-      hold: o.hold ?? 5,
-      scrub: Stage.lenis ? true : 0.3,
+      hold: o.hold ?? 12,
+      scrub: 0.6,
       build(tl, { q }) {
         s.t = 0;
         tl.to(s, { t: 1, duration: 1, onUpdate: paint }, 0);
@@ -771,8 +704,8 @@
 
     const resize = () => { view = fit(canvas); paint(); };
     const mm = Stage.scene(root, {
-      hold: o.hold ?? 3.8,
-      scrub: Stage.lenis ? true : 0.3,
+      hold: o.hold ?? 10,
+      scrub: 0.6,
       build(tl, { q }) {
         const beats = q('.path__title, .path__beats li, .path__end');
         s.t = 0;
@@ -938,15 +871,15 @@
     else {
       const mm = gsap.matchMedia();
       mm.add('(min-width: 1024px)', () => {
-        const strip = root.querySelector('.tool__strip');
+        const strip = root.querySelector('.tool__hold');
         // Starts part-drawn, so the strip never rises into view empty. The empty timeline makes the trigger wait for the
         // next tick to measure itself; measuring at once here sends the page to the top when the window crosses this width.
         ScrollTrigger.create({
           animation: gsap.timeline(),
           trigger: strip,
           start: 'top 92%',
-          end: 'top 12%',
-          scrub: true,
+          end: 'bottom bottom',
+          scrub: 0.6,
           onUpdate: (self) => {
             const t = lerp(0.12, 1, self.progress);
             setStack([span(t, 0, 1 / 3), span(t, 1 / 3, 2 / 3), span(t, 2 / 3, 1)]);
@@ -960,7 +893,7 @@
       mm.add('(max-width: 1023.98px)', () => {
         canvases.forEach((canvas, k) => {
           const run = (self) => { prog[k] = lerp(0.1, 1, self.progress); draw(k); };
-          ScrollTrigger.create({ animation: gsap.timeline(), trigger: canvas, start: 'top 88%', end: 'bottom 55%', scrub: true, onUpdate: run, onRefresh: run });
+          ScrollTrigger.create({ animation: gsap.timeline(), trigger: canvas, start: 'top 90%', end: 'bottom 25%', scrub: 0.6, onUpdate: run, onRefresh: run });
         });
       });
     }
@@ -2088,7 +2021,7 @@
     const pushed = document.querySelector('.pushed__line');
     if (pushed && window.gsap && window.ScrollTrigger && !still) {
       gsap.fromTo(pushed, { xPercent: 4 }, {
-        xPercent: -46,
+        xPercent: -20,
         ease: 'none',
         scrollTrigger: { trigger: pushed.parentElement, start: 'top bottom', end: 'bottom top', scrub: true },
       });
