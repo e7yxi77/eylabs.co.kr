@@ -634,6 +634,786 @@
     return mm;
   };
 
+  /* Build: a crowd of cursors puts each project's screen together, one element at a time, as the page scrolls. The
+     screens follow what each project shows on its own pages: 눈길 at work on an ordinary page, HANFLOW's market board
+     and DSSI's school dashboard. Cursors with nothing to do drift toward the visitor's pointer. */
+  Scenes.build = (root, o = {}) => {
+    const canvas = root.querySelector('.build__view');
+    const stage = root.querySelector('.scene-stage');
+    const copy = root.querySelector('.build__copy');
+    const items = [...root.querySelectorAll('.build__list li')];
+    const side = matchMedia('(min-width: 1024px), (orientation: landscape) and (max-height: 600px)');
+    const INK = '#1d1d1d';
+    const BLUE = '#006cff';
+    const UP = '#e5484d';
+    const DOWN = '#2f6bff';
+    const SOFT = ['#dfe9ff', '#ffe5d9', '#dcf2e3', '#ebe5ff', '#fff1c7'];
+    const INKS = ['#006cff', '#ff6b2c', '#12a150', '#7c5cff', '#1d1d1d', '#e8457c', '#4d9bff', '#f2a900', '#00a3a3', '#b14cf0', '#ff3b30', '#2f6bff'];
+    // Each element: x, y, width and height as shares of the page under the address bar, its kind, and its words.
+    const SCREENS = [
+      {
+        url: 'www.example.com',
+        eye: true,
+        ground: '#ffffff',
+        wide: [
+          [0, 0, 1, 0.1, 'nav'],
+          [0.05, 0.16, 0.48, 0.14, 'heading'],
+          [0.05, 0.34, 0.44, 0.1, 'lines'],
+          [0.05, 0.48, 0.16, 0.07, 'button', '검색'],
+          [0.58, 0.16, 0.37, 0.38, 'picture'],
+          [0.05, 0.62, 0.28, 0.32, 'card'],
+          [0.36, 0.62, 0.28, 0.32, 'card'],
+          [0.67, 0.62, 0.28, 0.32, 'card'],
+          [0.345, 0.605, 0.31, 0.35, 'gaze'],
+          [0.55, 0.83, 0.13, 0.09, 'voice', '클릭'],
+          [0.69, 0.03, 0.28, 0.3, 'popup', '눈길'],
+        ],
+        narrow: [
+          [0, 0, 1, 0.08, 'nav'],
+          [0.06, 0.12, 0.88, 0.11, 'heading'],
+          [0.06, 0.25, 0.8, 0.08, 'lines'],
+          [0.06, 0.35, 0.34, 0.055, 'button', '검색'],
+          [0.06, 0.44, 0.88, 0.2, 'picture'],
+          [0.06, 0.68, 0.42, 0.27, 'card'],
+          [0.52, 0.68, 0.42, 0.27, 'card'],
+          [0.505, 0.665, 0.45, 0.3, 'gaze'],
+          [0.24, 0.87, 0.25, 0.07, 'voice', '클릭'],
+          [0.42, 0.02, 0.55, 0.26, 'popup', '눈길'],
+        ],
+      },
+      {
+        url: 'hanflow.org',
+        ground: '#f5f6f8',
+        wide: [
+          [0, 0, 1, 0.1, 'brand', 'HANFLOW'],
+          [0.03, 0.14, 0.225, 0.17, 'index', '나스닥 선물'],
+          [0.27, 0.14, 0.225, 0.17, 'index', '코스피200 선물'],
+          [0.51, 0.14, 0.225, 0.17, 'index', '코스피'],
+          [0.75, 0.14, 0.22, 0.17, 'index', '코스닥'],
+          [0.03, 0.35, 0.57, 0.35, 'flows', '수급 흐름'],
+          [0.63, 0.35, 0.34, 0.35, 'rank', '주도주'],
+          [0.03, 0.74, 0.57, 0.22, 'summary', 'AI 시황 요약'],
+          [0.63, 0.74, 0.34, 0.22, 'compare', 'KRX · NXT'],
+        ],
+        narrow: [
+          [0, 0, 1, 0.08, 'brand', 'HANFLOW'],
+          [0.05, 0.11, 0.43, 0.12, 'index', '나스닥 선물'],
+          [0.52, 0.11, 0.43, 0.12, 'index', '코스피200 선물'],
+          [0.05, 0.25, 0.43, 0.12, 'index', '코스피'],
+          [0.52, 0.25, 0.43, 0.12, 'index', '코스닥'],
+          [0.05, 0.4, 0.9, 0.22, 'flows', '수급 흐름'],
+          [0.05, 0.65, 0.9, 0.17, 'rank', '주도주'],
+          [0.05, 0.85, 0.9, 0.12, 'summary', 'AI 시황 요약'],
+        ],
+      },
+      {
+        url: 'dssi.kr',
+        ground: '#f6f7fb',
+        wide: [
+          [0, 0, 0.17, 1, 'side', 'DSSI'],
+          [0.17, 0, 0.83, 0.1, 'top'],
+          [0.2, 0.14, 0.48, 0.5, 'timetable', '시간표'],
+          [0.71, 0.14, 0.26, 0.22, 'dday', '시험 D-day'],
+          [0.71, 0.4, 0.26, 0.24, 'todo', '숙제'],
+          [0.2, 0.68, 0.35, 0.28, 'meal', '급식'],
+          [0.58, 0.68, 0.39, 0.28, 'cards', '단어장'],
+        ],
+        narrow: [
+          [0, 0, 1, 0.08, 'top', 'DSSI'],
+          [0.05, 0.11, 0.9, 0.36, 'timetable', '시간표'],
+          [0.05, 0.5, 0.43, 0.16, 'dday', '시험 D-day'],
+          [0.52, 0.5, 0.43, 0.16, 'todo', '숙제'],
+          [0.05, 0.69, 0.43, 0.27, 'meal', '급식'],
+          [0.52, 0.69, 0.43, 0.27, 'cards', '단어장'],
+        ],
+      },
+    ];
+    const INTRO = 0.05;
+    const SEG = (1 - INTRO) / SCREENS.length;
+    const FADE = 0.07;
+    const DUR = 0.2;
+    const s = { p: 0 };
+    const hand = { x: 0, y: 0, until: 0 };
+    let view = null;
+    let win = null;
+    let last = 0;
+    let shown = -1;
+    let agents = [];
+
+    const round = (ctx, x, y, w, h, r) => {
+      ctx.beginPath();
+      const k = Math.max(0, Math.min(r, w / 2, h / 2));
+      if (ctx.roundRect) ctx.roundRect(x, y, w, h, k); else ctx.rect(x, y, w, h);
+    };
+    const capsule = (ctx, x, y, w, h, fill) => { round(ctx, x, y, w, h, h / 2); ctx.fillStyle = fill; ctx.fill(); };
+    const dot = (ctx, x, y, r, fill) => { ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fillStyle = fill; ctx.fill(); };
+    const write = (ctx, text, x, y, size, weight, fill, align = 'left') => {
+      ctx.font = `${weight} ${size}px ${FAMILY}`;
+      ctx.fillStyle = fill;
+      ctx.textAlign = align;
+      ctx.textBaseline = 'alphabetic';
+      ctx.fillText(text, x, y);
+    };
+    const eye = (ctx, x, y, r) => {
+      ctx.beginPath();
+      ctx.ellipse(x, y, r * 1.15, r * 0.7, 0, 0, TAU);
+      ctx.lineWidth = Math.max(1.2, r * 0.22);
+      ctx.strokeStyle = BLUE;
+      ctx.stroke();
+      dot(ctx, x, y, r * 0.38, BLUE);
+    };
+
+    // One element of a screen, finished. Text sizes follow the window, so a phone gets the same drawing smaller.
+    const piece = (ctx, kind, x, y, w, h, label, fs, seed) => {
+      const random = seeded(seed);
+      const pad = clamp(Math.min(w, h) * 0.09, 5, 14);
+      const card = () => {
+        round(ctx, x, y, w, h, Math.min(10, h * 0.14));
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = '#e4e4e4';
+        ctx.stroke();
+      };
+      const title = () => {
+        write(ctx, label, x + pad, y + pad + fs * 0.9, fs, 650, INK);
+        return y + pad + fs * 1.7;
+      };
+      const line = Math.max(3, Math.min(h * 0.07, fs * 0.62));
+      // Bars that run edge to edge keep square corners; the outline, the floating popup and the bubble may reach past their box.
+      const reach = kind === 'gaze' || kind === 'popup' || kind === 'voice' ? 12 : 1;
+      const square = kind === 'nav' || kind === 'brand' || kind === 'top' || kind === 'side';
+      ctx.save();
+      round(ctx, x - reach, y - reach, w + 2 * reach, h + 2 * reach, square ? 0 : Math.min(10, h * 0.14) + reach);
+      ctx.clip();
+      switch (kind) {
+        case 'nav': {
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(x, y, w, h);
+          ctx.fillStyle = '#ececec';
+          ctx.fillRect(x, y + h - 1, w, 1);
+          dot(ctx, x + pad + h * 0.18, y + h / 2, h * 0.18, BLUE);
+          capsule(ctx, x + pad + h * 0.5, y + h / 2 - h * 0.08, w * 0.1, h * 0.16, INK);
+          for (let i = 0; i < 3; i++) capsule(ctx, x + w - pad - (i + 1) * w * 0.09, y + h / 2 - h * 0.06, w * 0.065, h * 0.12, '#cfcfcf');
+          break;
+        }
+        case 'heading': {
+          const lh = Math.min(h * 0.32, fs * 2);
+          capsule(ctx, x, y + h * 0.08, w * 0.94, lh, INK);
+          capsule(ctx, x, y + h * 0.08 + lh * 1.5, w * 0.6, lh, INK);
+          break;
+        }
+        case 'lines': {
+          const lh = Math.min(h * 0.17, fs * 0.8);
+          [0.96, 0.9, 0.56].forEach((share, i) => capsule(ctx, x, y + lh * 0.3 + i * lh * 2.1, w * share, lh, '#e2e2e2'));
+          break;
+        }
+        case 'button': {
+          capsule(ctx, x, y, w, h, BLUE);
+          write(ctx, label, x + w / 2, y + h * 0.66, Math.min(fs, h * 0.48), 600, '#ffffff', 'center');
+          break;
+        }
+        case 'picture': {
+          round(ctx, x, y, w, h, 10);
+          ctx.fillStyle = '#e4edff';
+          ctx.fill();
+          ctx.save();
+          ctx.clip();
+          dot(ctx, x + w * 0.74, y + h * 0.3, h * 0.12, '#a9c6ff');
+          ctx.fillStyle = '#7fa8ff';
+          ctx.beginPath();
+          ctx.moveTo(x, y + h);
+          ctx.lineTo(x + w * 0.3, y + h * 0.42);
+          ctx.lineTo(x + w * 0.58, y + h);
+          ctx.fill();
+          ctx.fillStyle = '#4d86ff';
+          ctx.beginPath();
+          ctx.moveTo(x + w * 0.32, y + h);
+          ctx.lineTo(x + w * 0.66, y + h * 0.55);
+          ctx.lineTo(x + w, y + h);
+          ctx.fill();
+          ctx.restore();
+          break;
+        }
+        case 'card': {
+          card();
+          round(ctx, x + pad, y + pad, w - 2 * pad, h * 0.46, 6);
+          ctx.fillStyle = '#eef2f8';
+          ctx.fill();
+          capsule(ctx, x + pad, y + h * 0.64, (w - 2 * pad) * 0.9, line, INK);
+          capsule(ctx, x + pad, y + h * 0.64 + line * 2.2, (w - 2 * pad) * 0.6, line, '#dcdcdc');
+          break;
+        }
+        case 'gaze': {
+          round(ctx, x, y, w, h, 12);
+          ctx.lineWidth = 8;
+          ctx.strokeStyle = 'rgba(0, 108, 255, 0.16)';
+          ctx.stroke();
+          ctx.lineWidth = 3;
+          ctx.strokeStyle = BLUE;
+          ctx.stroke();
+          break;
+        }
+        case 'voice': {
+          capsule(ctx, x, y, w, h, INK);
+          const m = h * 0.5;
+          round(ctx, x + m * 0.62, y + h * 0.22, m * 0.34, h * 0.34, m * 0.17);
+          ctx.fillStyle = '#ffffff';
+          ctx.fill();
+          ctx.beginPath();
+          ctx.arc(x + m * 0.79, y + h * 0.42, m * 0.34, 0.15, Math.PI - 0.15);
+          ctx.lineWidth = 1.4;
+          ctx.strokeStyle = '#ffffff';
+          ctx.stroke();
+          write(ctx, label, x + m * 1.45, y + h * 0.66, Math.min(fs, h * 0.46), 600, '#ffffff');
+          break;
+        }
+        case 'popup': {
+          ctx.save();
+          ctx.shadowColor = 'rgba(17, 17, 17, 0.16)';
+          ctx.shadowBlur = 16;
+          ctx.shadowOffsetY = 6;
+          card();
+          ctx.restore();
+          eye(ctx, x + pad + fs * 0.6, y + pad + fs * 0.6, fs * 0.55);
+          write(ctx, label, x + pad + fs * 1.55, y + pad + fs * 0.98, fs, 700, INK);
+          const rowTop = y + pad + fs * 2.4;
+          const step = (h - (rowTop - y) - pad) / 3;
+          for (let i = 0; i < 3; i++) {
+            const ry = rowTop + step * i + step * 0.5;
+            if (i === 0) write(ctx, '응시 클릭', x + pad, ry + fs * 0.35, fs * 0.88, 500, INK);
+            else capsule(ctx, x + pad, ry - fs * 0.3, w * 0.34, fs * 0.6, '#e2e2e2');
+            const tw = fs * 1.9;
+            const th = fs * 1.05;
+            capsule(ctx, x + w - pad - tw, ry - th / 2, tw, th, i === 0 ? BLUE : '#d9d9d9');
+            dot(ctx, i === 0 ? x + w - pad - th / 2 : x + w - pad - tw + th / 2, ry, th * 0.38, '#ffffff');
+          }
+          break;
+        }
+        case 'brand': {
+          ctx.fillStyle = '#111111';
+          ctx.fillRect(x, y, w, h);
+          write(ctx, label, x + pad * 1.4, y + h * 0.64, Math.min(fs * 1.15, h * 0.45), 800, '#ffffff');
+          for (let i = 0; i < 3; i++) capsule(ctx, x + w - pad - (i + 1) * w * 0.08, y + h / 2 - h * 0.07, w * 0.055, h * 0.14, '#3a3a3a');
+          break;
+        }
+        case 'index': {
+          card();
+          write(ctx, label, x + pad, y + pad + fs * 0.85, fs * 0.86, 600, '#4a4a4a');
+          const up = random() > 0.4;
+          const top = y + pad + fs * 1.5;
+          const bottom = y + h - pad;
+          const n = 16;
+          let v = 0.5;
+          const pts = [];
+          for (let i = 0; i < n; i++) {
+            v = clamp(v + (random() - (up ? 0.38 : 0.62)) * 0.22, 0.05, 0.95);
+            pts.push([x + pad + ((w - 2 * pad) * i) / (n - 1), bottom - (bottom - top) * v]);
+          }
+          ctx.beginPath();
+          pts.forEach(([px, py], i) => (i ? ctx.lineTo(px, py) : ctx.moveTo(px, py)));
+          ctx.lineWidth = 1.8;
+          ctx.lineJoin = 'round';
+          ctx.strokeStyle = up ? UP : DOWN;
+          ctx.stroke();
+          ctx.lineTo(pts[n - 1][0], bottom);
+          ctx.lineTo(pts[0][0], bottom);
+          ctx.globalAlpha *= 0.1;
+          ctx.fillStyle = up ? UP : DOWN;
+          ctx.fill();
+          break;
+        }
+        case 'flows': {
+          card();
+          const top = title();
+          if (w > fs * 22) {
+            [['외국인', BLUE], ['기관', '#ff6b2c'], ['프로그램', '#12a150']].reverse().reduce((right, [name, ink]) => {
+              ctx.font = `500 ${fs * 0.78}px ${FAMILY}`;
+              const tw = ctx.measureText(name).width;
+              write(ctx, name, right - tw, y + pad + fs * 0.85, fs * 0.78, 500, '#6b6b6b');
+              dot(ctx, right - tw - fs * 0.5, y + pad + fs * 0.58, fs * 0.22, ink);
+              return right - tw - fs * 1.4;
+            }, x + w - pad);
+          }
+          const mid = (top + y + h - pad) / 2;
+          const reach = (y + h - pad - top) / 2;
+          ctx.fillStyle = '#e8e8e8';
+          ctx.fillRect(x + pad, mid, w - 2 * pad, 1);
+          const groups = w > 300 ? 9 : 6;
+          const gw = (w - 2 * pad) / groups;
+          for (let i = 0; i < groups; i++) {
+            [BLUE, '#ff6b2c', '#12a150'].forEach((ink, j) => {
+              const v = (random() - 0.45) * 1.6;
+              const bh = Math.abs(v) * reach * 0.9;
+              ctx.fillStyle = ink;
+              ctx.fillRect(x + pad + gw * i + gw * 0.18 + j * gw * 0.22, v > 0 ? mid - bh : mid + 1, gw * 0.18, bh);
+            });
+          }
+          break;
+        }
+        case 'rank': {
+          card();
+          const top = title();
+          const rows = clamp(Math.floor((y + h - pad - top) / (fs * 1.35)), 2, 5);
+          const step = (y + h - pad - top) / rows;
+          [0.42, 0.5, 0.36, 0.46, 0.3].slice(0, rows).forEach((share, i) => {
+            const ry = top + step * i + step / 2;
+            write(ctx, String(i + 1), x + pad, ry + fs * 0.32, fs * 0.82, 600, '#9a9a9a');
+            capsule(ctx, x + pad + fs * 1.2, ry - line / 2, (w - 2 * pad) * share, line, '#e3e3e3');
+            capsule(ctx, x + w - pad - w * 0.13, ry - line / 2, w * 0.13, line, i < 3 ? UP : DOWN);
+          });
+          break;
+        }
+        case 'summary': {
+          card();
+          const top = title();
+          ctx.font = `650 ${fs}px ${FAMILY}`;
+          const sx = x + pad + ctx.measureText(label).width + fs * 0.9;
+          const sy = y + pad + fs * 0.55;
+          const r = fs * 0.5;
+          ctx.beginPath();
+          ctx.moveTo(sx, sy - r);
+          ctx.quadraticCurveTo(sx, sy, sx + r, sy);
+          ctx.quadraticCurveTo(sx, sy, sx, sy + r);
+          ctx.quadraticCurveTo(sx, sy, sx - r, sy);
+          ctx.quadraticCurveTo(sx, sy, sx, sy - r);
+          ctx.fillStyle = BLUE;
+          ctx.fill();
+          [0.94, 0.86, 0.6].forEach((share, i) => capsule(ctx, x + pad, top + i * line * 2.3, (w - 2 * pad) * share, line, '#e3e3e3'));
+          break;
+        }
+        case 'compare': {
+          card();
+          const top = title();
+          [['KRX', 0.82, BLUE], ['NXT', 0.56, '#9bb8ff']].forEach(([name, share, ink], i) => {
+            const ry = top + i * fs * 1.9 + fs * 0.4;
+            write(ctx, name, x + pad, ry + fs * 0.35, fs * 0.82, 600, '#4a4a4a');
+            capsule(ctx, x + pad + fs * 2.6, ry - line * 0.7, (w - 2 * pad - fs * 2.6) * share, line * 1.4, ink);
+          });
+          break;
+        }
+        case 'side': {
+          ctx.fillStyle = '#111111';
+          ctx.fillRect(x, y, w, h);
+          write(ctx, label, x + pad * 1.3, y + pad + fs * 1.3, fs * 1.15, 800, '#ffffff');
+          for (let i = 0; i < 5; i++) {
+            const ry = y + pad + fs * 3.2 + i * fs * 2.3;
+            if (i === 0) capsule(ctx, x + pad * 0.7, ry - fs * 0.75, w - pad * 1.4, fs * 1.6, BLUE);
+            capsule(ctx, x + pad * 1.3, ry - fs * 0.22, (w - pad * 2.6) * (0.7 - i * 0.07), fs * 0.44, i === 0 ? '#ffffff' : '#3a3a3a');
+          }
+          break;
+        }
+        case 'top': {
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(x, y, w, h);
+          ctx.fillStyle = '#e8e8e8';
+          ctx.fillRect(x, y + h - 1, w, 1);
+          let left = x + pad * 1.3;
+          if (label) {
+            write(ctx, label, left, y + h * 0.64, Math.min(fs * 1.1, h * 0.46), 800, INK);
+            left += fs * 4;
+          }
+          capsule(ctx, left, y + h * 0.28, w * 0.4, h * 0.44, '#f0f1f4');
+          dot(ctx, x + w - pad - h * 0.22, y + h / 2, h * 0.22, BLUE);
+          break;
+        }
+        case 'timetable': {
+          card();
+          const top = title();
+          const cols = 5;
+          const rows = h > 200 ? 6 : 5;
+          const cw = (w - 2 * pad) / cols;
+          '월화수목금'.split('').forEach((day, i) => write(ctx, day, x + pad + cw * i + cw / 2, top + fs * 0.4, fs * 0.8, 600, '#6b6b6b', 'center'));
+          const gridTop = top + fs * 1.1;
+          const ch = (y + h - pad - gridTop) / rows;
+          for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+              const pick = random();
+              round(ctx, x + pad + cw * c + 2, gridTop + ch * r + 2, cw - 4, ch - 4, 4);
+              ctx.fillStyle = pick < 0.78 ? SOFT[Math.floor(random() * SOFT.length)] : '#f4f4f6';
+              ctx.fill();
+            }
+          }
+          break;
+        }
+        case 'dday': {
+          card();
+          const top = title();
+          ['D-7', 'D-12'].forEach((left, i) => {
+            const ry = top + i * fs * 2 + fs * 0.5;
+            dot(ctx, x + pad + fs * 0.3, ry, fs * 0.3, i ? '#7c5cff' : '#ff6b2c');
+            capsule(ctx, x + pad + fs * 1, ry - line / 2, (w - 2 * pad) * 0.38, line, '#e3e3e3');
+            write(ctx, left, x + w - pad, ry + fs * 0.36, fs * 0.95, 700, BLUE, 'right');
+          });
+          break;
+        }
+        case 'todo': {
+          card();
+          const top = title();
+          [0.62, 0.5, 0.7].forEach((share, i) => {
+            const ry = top + i * fs * 1.85 + fs * 0.4;
+            const b = fs * 0.9;
+            round(ctx, x + pad, ry - b / 2, b, b, 3);
+            if (i === 0) {
+              ctx.fillStyle = BLUE;
+              ctx.fill();
+              ctx.beginPath();
+              ctx.moveTo(x + pad + b * 0.22, ry);
+              ctx.lineTo(x + pad + b * 0.43, ry + b * 0.2);
+              ctx.lineTo(x + pad + b * 0.78, ry - b * 0.2);
+              ctx.lineWidth = 1.6;
+              ctx.strokeStyle = '#ffffff';
+              ctx.stroke();
+            } else {
+              ctx.lineWidth = 1.2;
+              ctx.strokeStyle = '#c9c9c9';
+              ctx.stroke();
+            }
+            capsule(ctx, x + pad + b * 1.6, ry - line / 2, (w - 2 * pad - b * 1.6) * share, line, '#e3e3e3');
+          });
+          break;
+        }
+        case 'meal': {
+          card();
+          const top = title();
+          [0.6, 0.48, 0.66, 0.4].forEach((share, i) => {
+            const ry = top + i * fs * 1.6 + fs * 0.3;
+            dot(ctx, x + pad + fs * 0.2, ry, fs * 0.2, '#f2a900');
+            capsule(ctx, x + pad + fs * 0.8, ry - line / 2, (w - 2 * pad) * share, line, '#e3e3e3');
+          });
+          break;
+        }
+        case 'cards': {
+          card();
+          const top = title();
+          const cw = (w - 2 * pad) * 0.7;
+          const ch = Math.max(fs * 2, y + h - pad - top);
+          ctx.save();
+          ctx.translate(x + pad + cw * 0.62, top + ch / 2);
+          ctx.rotate(-0.07);
+          round(ctx, -cw / 2, -ch / 2, cw, ch, 8);
+          ctx.fillStyle = '#ebe5ff';
+          ctx.fill();
+          ctx.restore();
+          round(ctx, x + pad, top, cw, ch, 8);
+          ctx.fillStyle = '#ffffff';
+          ctx.fill();
+          ctx.lineWidth = 1;
+          ctx.strokeStyle = '#dcdcdc';
+          ctx.stroke();
+          capsule(ctx, x + pad + cw * 0.12, top + ch * 0.38, cw * 0.5, line * 1.3, INK);
+          capsule(ctx, x + pad + cw * 0.12, top + ch * 0.38 + line * 2.4, cw * 0.32, line, '#cfcfcf');
+          break;
+        }
+        default:
+      }
+      ctx.restore();
+    };
+
+    // The browser window, its address bar and the empty page; returns where the page is.
+    const frame = (ctx, r, k) => {
+      const screen = SCREENS[k];
+      const narrow = r.w / r.h < 1.05 || (r.w < 400 && r.w / r.h < 1.4);
+      const bar = clamp(r.w * 0.042, 22, 34);
+      const rad = clamp(r.w * 0.016, 8, 14);
+      ctx.save();
+      ctx.shadowColor = 'rgba(17, 17, 17, 0.14)';
+      ctx.shadowBlur = 36;
+      ctx.shadowOffsetY = 14;
+      round(ctx, r.x, r.y, r.w, r.h, rad);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+      ctx.restore();
+      ctx.save();
+      round(ctx, r.x, r.y, r.w, r.h, rad);
+      ctx.clip();
+      ctx.fillStyle = '#efefef';
+      ctx.fillRect(r.x, r.y, r.w, bar);
+      ['#ff5f57', '#febc2e', '#28c840'].forEach((ink, i) => dot(ctx, r.x + bar * 0.5 + i * bar * 0.42, r.y + bar / 2, bar * 0.12, ink));
+      const ux = r.x + bar * 1.75;
+      const uw = r.w - bar * 1.75 - bar * (screen.eye ? 1.35 : 0.5);
+      const uh = bar * 0.6;
+      capsule(ctx, ux, r.y + (bar - uh) / 2, uw, uh, '#ffffff');
+      write(ctx, screen.url, ux + uh * 0.6, r.y + bar / 2 + bar * 0.13, bar * 0.36, 500, '#6b6b6b');
+      if (screen.eye) eye(ctx, r.x + r.w - bar * 0.72, r.y + bar / 2, bar * 0.2);
+      ctx.fillStyle = screen.ground;
+      ctx.fillRect(r.x, r.y + bar, r.w, r.h - bar);
+      ctx.restore();
+      round(ctx, r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1, rad);
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = '#dedede';
+      ctx.stroke();
+      const fs = narrow ? clamp(r.w * 0.032, 8.5, 12.5) : clamp(r.w * 0.0165, 9, 14);
+      return { x: r.x, y: r.y + bar, w: r.w, h: r.h - bar, narrow, fs, rad, outer: r };
+    };
+    const clipPage = (ctx, g) => {
+      ctx.save();
+      round(ctx, g.outer.x, g.outer.y, g.outer.w, g.outer.h, g.rad);
+      ctx.clip();
+      ctx.beginPath();
+      ctx.rect(g.x, g.y, g.w, g.h);
+      ctx.clip();
+    };
+    const parts = (k, g) => SCREENS[k][g.narrow ? 'narrow' : 'wide'].map((b) => ({ x: g.x + b[0] * g.w, y: g.y + b[1] * g.h, w: b[2] * g.w, h: b[3] * g.h, kind: b[4], label: b[5] || '' }));
+    const draw = (ctx, b, g, k, j) => piece(ctx, b.kind, b.x, b.y, b.w, b.h, b.label, g.fs, 101 + k * 37 + j * 11);
+
+    // The outline a cursor drags out, with its handles and the size it has reached.
+    const selection = (ctx, x, y, w, h, ink, g) => {
+      ctx.save();
+      ctx.globalAlpha *= 0.08;
+      ctx.fillStyle = ink;
+      ctx.fillRect(x, y, w, h);
+      ctx.restore();
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = ink;
+      ctx.strokeRect(x, y, w, h);
+      [[x, y], [x + w, y], [x, y + h], [x + w, y + h]].forEach(([hx, hy]) => {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(hx - 3, hy - 3, 6, 6);
+        ctx.lineWidth = 1.2;
+        ctx.strokeRect(hx - 3, hy - 3, 6, 6);
+      });
+      const scale = (g.narrow ? 390 : 1280) / g.w;
+      const text = `${Math.round(w * scale)} × ${Math.round(h * scale)}`;
+      const size = g.fs * 0.8;
+      ctx.font = `600 ${size}px ${FAMILY}`;
+      const tw = ctx.measureText(text).width + size;
+      const th = size * 1.6;
+      const ly = y + h + 5 + th > g.y + g.h ? y + h - th - 5 : y + h + 5;
+      round(ctx, x, ly, tw, th, 4);
+      ctx.fillStyle = ink;
+      ctx.fill();
+      write(ctx, text, x + size / 2, ly + th * 0.7, size, 600, '#ffffff');
+    };
+
+    const ARROW = [[0, 0], [0, 17], [4.4, 13], [7.4, 19.4], [10.4, 18.1], [7.5, 11.9], [13, 11.9]];
+    const cursor = (ctx, x, y, ink, scale) => {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.scale(scale, scale);
+      ctx.beginPath();
+      ARROW.forEach(([px, py], i) => (i ? ctx.lineTo(px, py) : ctx.moveTo(px, py)));
+      ctx.closePath();
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
+      ctx.shadowBlur = 4;
+      ctx.shadowOffsetY = 1;
+      ctx.fillStyle = ink;
+      ctx.fill();
+      ctx.shadowColor = 'transparent';
+      ctx.lineJoin = 'round';
+      ctx.lineWidth = 1.4;
+      ctx.strokeStyle = '#ffffff';
+      ctx.stroke();
+      ctx.restore();
+    };
+    const status = (ctx, g, done, total) => {
+      const size = g.fs * 0.86;
+      const text = `에이전트 ${agents.length} · ${done}/${total}`;
+      ctx.font = `600 ${size}px ${FAMILY}`;
+      const dots = 4;
+      const r = size * 0.36;
+      const pw = ctx.measureText(text).width + size * 1.6 + dots * r * 1.4 + r;
+      const ph = size * 2;
+      const px = g.outer.x + g.outer.w / 2 - pw / 2;
+      const py = g.outer.y + g.outer.h - ph / 2;
+      capsule(ctx, px, py, pw, ph, INK);
+      for (let i = 0; i < dots; i++) {
+        dot(ctx, px + size * 0.8 + r + i * r * 1.4, py + ph / 2, r + 1, INK);
+        dot(ctx, px + size * 0.8 + r + i * r * 1.4, py + ph / 2, r, INKS[i]);
+      }
+      write(ctx, text, px + size * 0.8 + dots * r * 1.4 + r * 1.6, py + ph * 0.66, size, 600, '#ffffff');
+    };
+
+    // Critically damped, from where the cursor is now, so the scroll and the pointer can both pull on it.
+    const follow = (a, tx, ty, dt, omega) => {
+      if (!a.ready || !dt) {
+        a.x = tx;
+        a.y = ty;
+        a.vx = 0;
+        a.vy = 0;
+        a.ready = true;
+        return;
+      }
+      const k = omega * omega;
+      const d = 1 + dt * 2 * omega + dt * dt * k;
+      a.vx = (a.vx + dt * k * (tx - a.x)) / d;
+      a.vy = (a.vy + dt * k * (ty - a.y)) / d;
+      a.x += a.vx * dt;
+      a.y += a.vy * dt;
+    };
+    const idle = (i, now, g) => {
+      const turn = i * 2.39996 + now * 0.00011 * (0.7 + (i % 4) * 0.2);
+      let x = g.x + g.w / 2 + Math.cos(turn) * g.w * (0.3 + 0.1 * Math.sin(i * 1.7 + now * 0.00023));
+      let y = g.y + g.h / 2 + Math.sin(turn * 1.3) * g.h * (0.28 + 0.08 * Math.cos(i * 2.3 + now * 0.00019));
+      const o = g.outer;
+      if (now < hand.until && hand.x > o.x - 48 && hand.x < o.x + o.w + 48 && hand.y > o.y - 48 && hand.y < o.y + o.h + 48) {
+        x = lerp(x, hand.x + Math.cos(i * 2.39996) * 52, 0.6);
+        y = lerp(y, hand.y + Math.sin(i * 2.39996) * 52, 0.6);
+      }
+      return [x, y];
+    };
+
+    const layout = () => {
+      view = fit(canvas);
+      const { w, h } = view;
+      const S = stage.getBoundingClientRect();
+      const C = copy.getBoundingClientRect();
+      const m = Math.max(16, C.left - S.left);
+      let r;
+      if (side.matches) {
+        const x = C.right - S.left + clamp(w * 0.04, 24, 72);
+        const ww = w - m - x;
+        const wh = Math.min(h - 2 * Math.max(72, h * 0.12), ww * 0.64, h - 112);
+        r = { x, y: Math.max(64, (h - wh) / 2 + h * 0.03), w: ww, h: wh };
+      } else {
+        const y = C.bottom - S.top + clamp(h * 0.03, 16, 32);
+        const ww = w - 2 * m;
+        r = { x: m, y, w: ww, h: Math.min(h - y - 56, ww * 1.45) };
+      }
+      win = { ...r, h: Math.max(140, r.h) };
+      const count = win.w < 560 ? 8 : 12;
+      if (agents.length !== count) agents = INKS.slice(0, count).map((ink) => ({ ink, x: 0, y: 0, vx: 0, vy: 0, ready: false }));
+    };
+
+    // Resting: the three finished screens stacked like windows on a desk, the cursors parked on the last one.
+    const still = (ctx) => {
+      const { w, h } = view;
+      const wide = w >= 560;
+      const ww = wide ? Math.min(w * 0.7, h * 0.86 * 1.55) : w * 0.84;
+      const wh = wide ? ww / 1.55 : Math.min(h * 0.8, ww * 1.2);
+      const dx = Math.min(w * 0.06, (w - ww) / 2);
+      const dy = Math.min(h * 0.05, (h - wh) / 2);
+      const x0 = (w - ww - 2 * dx) / 2;
+      const y0 = (h - wh - 2 * dy) / 2;
+      SCREENS.forEach((_, k) => {
+        const g = frame(ctx, { x: x0 + k * dx, y: y0 + k * dy, w: ww, h: wh }, k);
+        clipPage(ctx, g);
+        parts(k, g).forEach((b, j) => draw(ctx, b, g, k, j));
+        ctx.restore();
+        if (k === SCREENS.length - 1) {
+          parts(k, g).forEach((b, j) => {
+            if (j < 4) cursor(ctx, b.x + b.w * 0.7, b.y + b.h * 0.62, INKS[j], g.narrow ? 0.85 : 1);
+          });
+        }
+      });
+    };
+
+    const paint = (now = performance.now()) => {
+      if (!view || !win) return;
+      const { ctx, w, h } = view;
+      const dt = last ? clamp((now - last) / 1000, 0, 0.05) : 0;
+      last = now;
+      ctx.clearRect(0, 0, w, h);
+      if (!root.classList.contains('is-live')) { still(ctx); return; }
+      const p = s.p;
+      const k = p < INTRO ? 0 : Math.min(SCREENS.length - 1, Math.floor((p - INTRO) / SEG));
+      const u = p < INTRO ? 0 : clamp((p - INTRO - k * SEG) / SEG, 0, 1);
+      if (k !== shown) {
+        items.forEach((li, i) => li.classList.toggle('is-on', i === k));
+        shown = k;
+      }
+      const g = frame(ctx, win, k);
+      const list = parts(k, g);
+      const starts = list.map((_, j) => 0.1 + (j * 0.64) / list.length);
+      const grown = list.map((_, j) => span(u, starts[j], starts[j] + DUR));
+      clipPage(ctx, g);
+      if (k > 0 && u < FADE) {
+        ctx.globalAlpha = 1 - smooth(u / FADE);
+        parts(k - 1, g).forEach((b, j) => draw(ctx, b, g, k - 1, j));
+        ctx.globalAlpha = 1;
+      }
+      list.forEach((b, j) => {
+        const seen = smooth(span(grown[j], 0.55, 1));
+        if (seen <= 0) return;
+        ctx.globalAlpha = seen;
+        draw(ctx, b, g, k, j);
+        ctx.globalAlpha = 1;
+      });
+      const A = agents.length;
+      list.forEach((b, j) => {
+        const a = grown[j];
+        if (a <= 0 || a >= 1) return;
+        const e = smooth(Math.min(1, a / 0.6));
+        ctx.globalAlpha = 1 - smooth(span(a, 0.75, 1));
+        selection(ctx, b.x, b.y, b.w * e, b.h * e, agents[(j + k * 4) % A].ink, g);
+        ctx.globalAlpha = 1;
+      });
+      ctx.restore();
+      status(ctx, g, grown.filter((a) => a >= 1).length, list.length);
+
+      agents.forEach((agent, i) => {
+        let [tx, ty] = idle(i, now, g);
+        let omega = 5;
+        if (p < INTRO) {
+          const t = smooth(span(p, 0, INTRO));
+          const ex = i % 2 ? w + 30 + (i % 3) * 24 : g.outer.x + g.outer.w * ((i * 0.618) % 1);
+          const ey = i % 2 ? g.outer.y + g.outer.h * ((i * 0.618) % 1) : h + 30 + (i % 3) * 24;
+          tx = lerp(ex, tx, t);
+          ty = lerp(ey, ty, t);
+          omega = 9;
+        }
+        list.forEach((b, j) => {
+          if ((j + k * 4) % A !== i) return;
+          const start = starts[j];
+          if (u >= start - 0.06 && u < start) {
+            const t = smooth(span(u, start - 0.06, start));
+            tx = lerp(tx, b.x, t);
+            ty = lerp(ty, b.y, t);
+            omega = 14;
+          } else if (u >= start && u < start + DUR * 0.6) {
+            const e = smooth(span(u, start, start + DUR * 0.6));
+            tx = b.x + b.w * e;
+            ty = b.y + b.h * e;
+            omega = 40;
+          } else if (u >= start + DUR * 0.6 && u < start + DUR + 0.05) {
+            tx = b.x + b.w + 4;
+            ty = b.y + b.h + 4;
+            omega = 20;
+          }
+        });
+        follow(agent, tx, ty, dt, omega);
+        cursor(ctx, agent.x, agent.y, agent.ink, g.narrow ? 0.85 : 1);
+      });
+    };
+
+    const mm = Stage.scene(root, {
+      hold: o.hold ?? 7.5,
+      scrub: 0.6,
+      phone: { hold: 5.5 },
+      build(tl) {
+        s.p = 0;
+        tl.to(s, { p: 1, duration: 1 }, 0);
+        layout();
+      },
+      rest() {
+        s.p = 1;
+        layout();
+        paint();
+        new ResizeObserver(() => { if (root.classList.contains('is-rest')) { layout(); paint(); } }).observe(canvas);
+      },
+    });
+    if (root.classList.contains('is-live')) {
+      ScrollTrigger.addEventListener('refresh', () => { layout(); paint(); });
+      whileVisible(stage, paint);
+      stage.addEventListener('pointermove', (e) => {
+        if (e.pointerType !== 'mouse') return;
+        const r = stage.getBoundingClientRect();
+        hand.x = e.clientX - r.left;
+        hand.y = e.clientY - r.top;
+        hand.until = Infinity;
+      }, { passive: true });
+      stage.addEventListener('pointerleave', () => { hand.until = 0; });
+      stage.addEventListener('pointerdown', (e) => {
+        if (e.pointerType === 'mouse') return;
+        const r = stage.getBoundingClientRect();
+        hand.x = e.clientX - r.left;
+        hand.y = e.clientY - r.top;
+        hand.until = performance.now() + 1500;
+      }, { passive: true });
+    }
+    return mm;
+  };
+
   /* Tool: one thread crosses three fields. Six candidates narrow to one, that one is tuned, and it goes to work
      on live data. The scroll draws it from left to right; stacked, each field draws its own part. */
   const tool = () => {
