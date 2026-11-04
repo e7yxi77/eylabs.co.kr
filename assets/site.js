@@ -10,6 +10,7 @@
     else scrollTo({ top: y, behavior: 'instant' });
   };
   const TAU = Math.PI * 2;
+  const CURSOR_INKS = ['#006cff', '#ff6b2c', '#12a150', '#7c5cff', '#1d1d1d', '#e8457c', '#4d9bff', '#f2a900', '#00a3a3', '#b14cf0', '#ff3b30', '#2f6bff'];
   const seeded = (seed) => () => {
     seed = (seed + 0x6d2b79f5) | 0;
     let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
@@ -648,7 +649,7 @@
     const UP = '#e5484d';
     const DOWN = '#2f6bff';
     const SOFT = ['#dfe9ff', '#ffe5d9', '#dcf2e3', '#ebe5ff', '#fff1c7'];
-    const INKS = ['#006cff', '#ff6b2c', '#12a150', '#7c5cff', '#1d1d1d', '#e8457c', '#4d9bff', '#f2a900', '#00a3a3', '#b14cf0', '#ff3b30', '#2f6bff'];
+    const INKS = CURSOR_INKS;
     // Each element: x, y, width and height as shares of the page under the address bar, its kind, and its words.
     const SCREENS = [
       {
@@ -2028,7 +2029,8 @@
     };
     const size = () => {
       view = fit(canvas);
-      pitch = view.w < 640 ? 6 : 8;
+      // A tall display (a card stretched by larger text) spaces its dots out, so a frame never paints more than about 9,000.
+      pitch = Math.max(view.w < 640 ? 6 : 8, Math.sqrt((view.w * view.h) / 9000));
       cols = Math.max(8, Math.floor(view.w / pitch));
       lines = Math.max(6, Math.floor(view.h / pitch));
       x0 = (view.w - (cols - 1) * pitch) / 2;
@@ -2658,6 +2660,232 @@
     }
   };
 
+  /* Compose: the visitor picks what to make together, a cursor presses the choice and drafts the subject and the
+     headings of the mail, and the button opens that draft in the visitor's own mail app. */
+  const compose = () => {
+    const root = document.querySelector('.compose');
+    if (!root) return;
+    const act = document.querySelector('.contact__act');
+    const topics = [...root.querySelectorAll('.compose__topics button')];
+    const to = root.querySelector('.compose__to');
+    const typed = root.querySelector('.compose__subject span');
+    const lines = [...root.querySelectorAll('.compose__body p')];
+    const send = root.querySelector('.compose__send');
+    const cursor = root.querySelector('.compose__cursor');
+    const still = calm();
+    let run = 0;
+    root.hidden = false;
+    // The two plain buttons stay for pages without script; here the composer takes their place.
+    act.hidden = true;
+    act.classList.add('is-in');
+
+    const wait = (ms) => new Promise((done) => setTimeout(done, ms));
+    // The tip of the cursor goes to a point on an element, measured from the composer's own corner.
+    const point = (el, fx, fy) => {
+      const r = el.getBoundingClientRect();
+      const o = root.getBoundingClientRect();
+      return [r.left - o.left + r.width * fx, r.top - o.top + r.height * fy];
+    };
+    const moveTo = ([x, y], ms = 520) => {
+      cursor.style.transitionDuration = `${ms}ms, 200ms`;
+      cursor.style.transform = `translate(${x}px, ${y}px)`;
+    };
+    const mailto = (button) => {
+      const body = lines.map((p) => p.textContent).join('\r\n') + '\r\n';
+      return `mailto:${button.dataset.to}?subject=${encodeURIComponent(button.dataset.subject)}&body=${encodeURIComponent(body)}`;
+    };
+
+    const choose = async (button, byCursor) => {
+      const mine = ++run;
+      topics.forEach((b) => b.setAttribute('aria-pressed', String(b === button)));
+      to.textContent = button.dataset.to;
+      send.href = mailto(button);
+      send.setAttribute('aria-label', `${button.dataset.to}로 메일 쓰기, 제목 ${button.dataset.subject}`);
+      const subject = button.dataset.subject;
+      if (still) {
+        typed.textContent = subject;
+        lines.forEach((p) => p.classList.add('is-in'));
+        return;
+      }
+      lines.forEach((p) => p.classList.remove('is-in'));
+      typed.textContent = '';
+      cursor.style.opacity = '1';
+      if (byCursor) {
+        moveTo(point(button, 0.55, 0.6));
+        await wait(560);
+        if (mine !== run) return;
+        button.classList.add('is-press');
+        await wait(160);
+        button.classList.remove('is-press');
+      }
+      moveTo(point(typed.parentElement, 0, 0.9), 420);
+      await wait(440);
+      for (let i = 1; i <= subject.length; i++) {
+        if (mine !== run) return;
+        typed.textContent = subject.slice(0, i);
+        moveTo(point(typed, 1, 0.9), 60);
+        await wait(subject[i - 1] === ' ' ? 90 : 46);
+      }
+      for (const p of lines) {
+        if (mine !== run) return;
+        p.classList.add('is-in');
+        moveTo(point(p, 0.6, 0.9), 160);
+        await wait(170);
+      }
+      if (mine !== run) return;
+      moveTo(point(send, 0.7, 0.62), 600);
+    };
+
+    topics.forEach((b) => b.addEventListener('click', () => choose(b, false)));
+    const start = () => {
+      if (topics.some((b) => b.getAttribute('aria-pressed') === 'true')) return;
+      moveTo(point(root, 0.9, 0), 0);
+      choose(topics[0], true);
+    };
+    if (still || !('IntersectionObserver' in window)) { choose(topics[0], false); return; }
+    const io = new IntersectionObserver((entries) => {
+      if (!entries.some((e) => e.isIntersecting)) return;
+      io.disconnect();
+      start();
+    }, { threshold: 0.5 });
+    io.observe(root);
+  };
+
+  /* Footer: the cursors gather into the company's name as the page reaches its end, scatter again on the way back up,
+     and step aside for the visitor's pointer or finger. */
+  const swarm = () => {
+    const canvas = document.querySelector('.foot__swarm');
+    if (!canvas) return;
+    const still = calm();
+    const inks = CURSOR_INKS.filter((ink) => ink !== '#1d1d1d');
+    const hand = { x: -1e4, y: -1e4, until: 0 };
+    let view = null;
+    let agents = [];
+    let last = 0;
+    let scale = 1;
+
+    const shape = () => {
+      view = fit(canvas);
+      const { w, h } = view;
+      const off = document.createElement('canvas');
+      off.width = Math.max(1, Math.round(w));
+      off.height = Math.max(1, Math.round(h));
+      const g = off.getContext('2d');
+      // A narrow screen stacks the name on two lines, so each letter keeps enough cursors to read.
+      const rows = w < 640 ? ['EY', 'LABS'] : ['EY LABS'];
+      let size = (h * 0.92) / (rows.length === 1 ? 1 : 2.05);
+      g.font = `800 ${size}px ${FAMILY}`;
+      const width = Math.max(...rows.map((row) => g.measureText(row).width));
+      if (width > w * 0.96) size *= (w * 0.96) / width;
+      g.font = `800 ${size}px ${FAMILY}`;
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      rows.forEach((row, i) => g.fillText(row, w / 2, h / 2 + (i - (rows.length - 1) / 2) * size * 1.02 + size * 0.04));
+      const data = g.getImageData(0, 0, off.width, off.height).data;
+      let ink = 0;
+      for (let i = 3; i < data.length; i += 16) if (data[i] > 128) ink += 4;
+      const want = w < 640 ? 130 : 280;
+      const step = Math.max(5, Math.sqrt(ink / want));
+      scale = clamp(step / 15, 0.4, 0.85);
+      const random = seeded(29);
+      const points = [];
+      for (let y = step / 2; y < off.height; y += step) {
+        for (let x = step / 2; x < off.width; x += step) {
+          // A little off the grid, so the letters read as a crowd rather than a printout.
+          if (data[(Math.round(y) * off.width + Math.round(x)) * 4 + 3] > 128) points.push([x + (random() - 0.5) * step * 0.35, y + (random() - 0.5) * step * 0.35]);
+        }
+      }
+      agents = points.map(([tx, ty], i) => {
+        const away = random() * TAU;
+        const reach = Math.max(w, h) * (0.55 + random() * 0.5);
+        const old = agents[i];
+        return {
+          tx, ty,
+          sx: w / 2 + Math.cos(away) * reach,
+          sy: h / 2 + Math.sin(away) * reach * 0.6 + h * 0.4,
+          delay: random() * 0.45,
+          phase: random() * TAU,
+          ink: inks[i % inks.length],
+          x: old ? old.x : NaN, y: old ? old.y : NaN, vx: 0, vy: 0,
+        };
+      });
+    };
+
+    const ARROW = new Path2D('M0 0V17L4.4 13L7.4 19.4L10.4 18.1L7.5 11.9H13Z');
+    const paint = (now = performance.now()) => {
+      if (!view) return;
+      const { ctx, w, h } = view;
+      const dt = last ? clamp((now - last) / 1000, 0, 0.05) : 0;
+      last = now;
+      const r = canvas.getBoundingClientRect();
+      const k = still ? 1 : smooth(span(innerHeight - r.top, h * 0.15, h * 0.95));
+      const near = now < hand.until;
+      ctx.clearRect(0, 0, w, h);
+      ctx.lineJoin = 'round';
+      ctx.lineWidth = 1.2 / scale;
+      ctx.strokeStyle = '#111111';
+      agents.forEach((a) => {
+        const t = smooth(span(k, a.delay, a.delay + 0.55));
+        const drift = still ? 0 : (1 - t * 0.85) * 4;
+        let gx = lerp(a.sx, a.tx, t) + Math.cos(now * 0.0016 + a.phase) * drift;
+        let gy = lerp(a.sy, a.ty, t) + Math.sin(now * 0.0013 + a.phase) * drift;
+        if (near) {
+          const dx = gx - hand.x;
+          const dy = gy - hand.y;
+          const d = Math.hypot(dx, dy) || 1;
+          const R = Math.max(70, w * 0.07);
+          if (d < R) {
+            gx += (dx / d) * (R - d) * 0.9;
+            gy += (dy / d) * (R - d) * 0.9;
+          }
+        }
+        if (Number.isNaN(a.x) || !dt || still) {
+          a.x = gx;
+          a.y = gy;
+        } else {
+          const kk = 140;
+          const d = 1 + dt * 2 * 12 + dt * dt * kk;
+          a.vx = (a.vx + dt * kk * (gx - a.x)) / d;
+          a.vy = (a.vy + dt * kk * (gy - a.y)) / d;
+          a.x += a.vx * dt;
+          a.y += a.vy * dt;
+        }
+        if (a.x < -20 || a.y < -30 || a.x > w + 20 || a.y > h + 20) return;
+        ctx.save();
+        ctx.translate(a.x, a.y);
+        ctx.scale(scale, scale);
+        ctx.fillStyle = a.ink;
+        ctx.fill(ARROW);
+        ctx.stroke(ARROW);
+        ctx.restore();
+      });
+    };
+
+    const ready = document.fonts ? document.fonts.ready : Promise.resolve();
+    ready.then(() => {
+      shape();
+      paint();
+      new ResizeObserver(() => { shape(); paint(); }).observe(canvas);
+      if (still) return;
+      whileVisible(canvas, paint);
+      canvas.addEventListener('pointermove', (e) => {
+        if (e.pointerType !== 'mouse') return;
+        const b = canvas.getBoundingClientRect();
+        hand.x = e.clientX - b.left;
+        hand.y = e.clientY - b.top;
+        hand.until = Infinity;
+      }, { passive: true });
+      canvas.addEventListener('pointerleave', () => { hand.until = 0; });
+      canvas.addEventListener('pointerdown', (e) => {
+        if (e.pointerType === 'mouse') return;
+        const b = canvas.getBoundingClientRect();
+        hand.x = e.clientX - b.left;
+        hand.y = e.clientY - b.top;
+        hand.until = performance.now() + 900;
+      }, { passive: true });
+    });
+  };
+
   /* Quiet layer */
   const quiet = () => {
     const still = calm();
@@ -2808,4 +3036,6 @@
   projects();
   sheets();
   weave();
+  compose();
+  swarm();
 })();

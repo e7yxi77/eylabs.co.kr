@@ -547,6 +547,46 @@ html.js .contact__weave { display: block; width: 100%; height: clamp(180px, 36sv
 .contact__body { margin-top: clamp(40px, 5vw, 72px); padding-inline: var(--margin); }
 .contact__lead { max-width: 34em; margin-top: clamp(12px, 1.6vw, 24px); }
 .contact__act { display: flex; flex-wrap: wrap; gap: 8px; margin-top: clamp(20px, 2.4vw, 32px); }
+.contact__act[hidden] { display: none; }
+/* Compose: pick what to make together and a cursor drafts the mail; the button opens it in the visitor's own mail app. */
+.compose { position: relative; display: grid; justify-items: start; gap: 14px; max-width: 40rem; margin-top: clamp(24px, 3vw, 40px); }
+.compose[hidden] { display: none; }
+.compose__ask { font-weight: 600; }
+.compose__topics { display: flex; flex-wrap: wrap; gap: 8px; }
+.compose__topics button {
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1.5px solid #d6d6d6;
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--ink);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color var(--t-hover) ease, border-color var(--t-hover) ease, color var(--t-hover) ease, transform var(--t-press) var(--ease-out);
+}
+.compose__topics button:active, .compose__topics button.is-press { transform: scale(0.95); }
+.compose__topics button[aria-pressed="true"] { border-color: var(--ink); background: var(--ink); color: var(--bg); }
+@media (hover: hover) and (pointer: fine) {
+  .compose__topics button:hover { border-color: var(--ink); }
+}
+.compose__mail { width: 100%; overflow: clip; border-radius: 20px; background: var(--surface); padding-bottom: 18px; }
+[data-ui] .compose__bar { display: flex; align-items: center; gap: 6px; padding: 12px 16px; border-bottom: 1px solid #e4e4e4; font-size: 0.875rem; font-weight: 600; color: var(--muted); }
+.compose__bar i { width: 10px; height: 10px; border-radius: 50%; background: #d4d4d4; }
+.compose__bar span { margin-left: 8px; }
+[data-ui] .compose__row { display: grid; grid-template-columns: 5.5em minmax(0, 1fr); align-items: baseline; gap: 8px; padding: 12px 16px; border-bottom: 1px solid #e6e6e6; }
+.compose__row > span { font-size: 0.875rem; font-weight: 500; color: var(--muted); }
+.compose__row b { min-height: 1.6em; font-weight: 600; overflow-wrap: anywhere; }
+.compose__subject::after { content: ""; display: inline-block; width: 2px; height: 1.1em; margin-left: 2px; vertical-align: -0.15em; background: var(--accent); }
+.compose__body { display: grid; gap: 6px; padding: 14px 16px 0; font-size: 0.9375rem; color: var(--muted); }
+.compose__cursor { position: absolute; top: 0; left: 0; z-index: 2; width: 17px; height: 24px; overflow: visible; pointer-events: none; fill: var(--accent); stroke: #ffffff; stroke-width: 1.4; stroke-linejoin: round; opacity: 0; }
+@media (prefers-reduced-motion: no-preference) {
+  .compose__subject::after { animation: caret 1s steps(1) infinite; }
+  .compose__body p { opacity: 0; transform: translateY(4px); transition: opacity 260ms ease, transform 360ms var(--ease-out); }
+  .compose__body p.is-in { opacity: 1; transform: none; }
+  .compose__cursor { transition: transform 520ms var(--ease-out), opacity 200ms ease; }
+}
+@keyframes caret { 50% { opacity: 0; } }
 .reach { display: grid; grid-auto-flow: column; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(3, auto); gap: clamp(14px, 1.6vw, 22px) var(--gutter); margin-top: clamp(32px, 4vw, 56px); }
 .reach a { display: grid; grid-template-columns: 6em minmax(0, 1fr); column-gap: 12px; align-items: baseline; text-decoration: none; transition: transform var(--t-press) var(--ease-out); transform-origin: left center; }
 .reach small { grid-column: 2; font-size: 0.9375rem; font-weight: 500; }
@@ -567,6 +607,9 @@ html.js .contact__weave { display: block; width: 100%; height: clamp(180px, 36sv
   color: var(--field-1-ink);
 }
 .foot a { color: inherit; text-underline-offset: 0.2em; }
+/* The cursors that built the screens gather into the name at the very end. */
+.foot__swarm { display: none; }
+html.js .foot__swarm { display: block; grid-column: 1 / -1; width: 100%; height: clamp(140px, 22vw, 320px); touch-action: pan-y; }
 .foot__info a { flex-wrap: wrap; min-width: 0; overflow-wrap: anywhere; }
 .foot__logo { display: block; width: fit-content; align-self: start; transition: transform var(--t-press) var(--ease-out); }
 .foot__logo:active { transform: scale(0.97); }
@@ -658,7 +701,7 @@ html.big-type [data-ui] .flow__bin { max-width: 30%; white-space: normal; }
 a, button, summary { touch-action: manipulation; }
 button, summary, .button { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 @media (pointer: coarse) {
-  .button--small, [data-ui].segment button, .chip { min-height: 44px; }
+  .button--small, [data-ui].segment button, .chip, .compose__topics button { min-height: 44px; }
   .nav__mark { display: inline-flex; align-items: center; min-height: 44px; }
   .what__more a, .rec__desc a:not(.chip), .foot a, .nav__links a { display: inline-flex; align-items: center; min-height: 44px; margin-top: 0; }
   .nav__links a { justify-content: center; min-width: 44px; }
@@ -694,6 +737,7 @@ button, summary, .button { -webkit-user-select: none; user-select: none; -webkit
   [data-ui].flow__graph { height: 520px; }
 
   .foot { grid-template-columns: minmax(0, 1fr); }
+  html.js .foot__swarm { height: min(76vw, 320px); }
   .foot__info { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .foot__wide, .foot__info div:nth-last-child(-n + 2) { grid-column: 1 / -1; }
 }
